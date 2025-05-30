@@ -17,8 +17,7 @@ import traceback
 # Import the pdf_text_overlay library
 try:
     from pdf_text_overlay import pdf_writer, pdf_from_template
-except ImportError as e:
-    raise e
+except ImportError:
     print("Warning: pdf_text_overlay library not installed. Install with: pip install pdf_text_overlay")
     pdf_writer = None
     pdf_from_template = None
@@ -112,30 +111,36 @@ def process_pdf():
             return jsonify({'error': 'Uploaded PDF not found'}), 404
         
         # Convert coordinates from canvas to PDF coordinate system
-        # The frontend sends canvas coordinates, we need to convert them to PDF coordinates
+        # The frontend sends 0-based page numbers which is correct for pdf_text_overlay
         converted_config = []
         for page_config in configuration:
             converted_page = {
-                'page_number': page_config['page_number'],
+                'page_number': page_config['page_number'],  # Already 0-based from frontend
                 'variables': []
             }
             
             for var in page_config['variables']:
-                # The coordinates are already converted in the frontend
-                # but we ensure they match the pdf_text_overlay format
-                converted_var = {
-                    'name': var['name'],
-                    'x-coordinate': var['x-coordinate'],
-                    'y-coordinate': var['y-coordinate'],
-                    'font_size': var.get('font_size', 12)
-                }
+                if 'conditional_coordinates' in var:
+                    # Handle conditional coordinates
+                    converted_var = {
+                        'name': var['name'],
+                        'conditional_coordinates': var['conditional_coordinates']
+                    }
+                else:
+                    # Handle simple coordinates
+                    converted_var = {
+                        'name': var['name'],
+                        'x-coordinate': var['x-coordinate'],
+                        'y-coordinate': var['y-coordinate'],
+                        'font_size': var.get('font_size', 12)
+                    }
                 converted_page['variables'].append(converted_var)
             
             converted_config.append(converted_page)
         
         # Default font (you can add custom font upload functionality)
-        font_path = os.path.join(FONT_FOLDER, 'default.ttf')  # Will use default font if None
-        
+        font_path = None  # Will use default font if None
+        font_path = os.path.join(FONT_FOLDER, 'default.ttf')
         # Process PDF
         with open(pdf_path, 'rb') as pdf_file:
             if font_path and os.path.exists(font_path):
@@ -143,7 +148,7 @@ def process_pdf():
                     output = pdf_writer(pdf_file, converted_config, sample_data, font_file)
             else:
                 output = pdf_writer(pdf_file, converted_config, sample_data, None)
-        print(output)
+
         # Save output PDF
         session_id = get_session_id()
         output_filename = f"output_{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"

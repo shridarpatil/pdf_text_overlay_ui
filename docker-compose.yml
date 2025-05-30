@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  pdf-overlay-app:
+    build: .
+    container_name: pdf-text-overlay
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=your-production-secret-key-change-this
+      - MAX_FILE_SIZE=16777216  # 16MB in bytes
+    volumes:
+      # Persistent storage for uploads and outputs
+      - pdf_uploads:/app/uploads
+      - pdf_outputs:/app/outputs
+      - pdf_fonts:/app/fonts
+      # Optional: Mount custom fonts directory
+      # - ./custom_fonts:/app/fonts
+    restart: unless-stopped
+    networks:
+      - pdf-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  pdf_uploads:
+    driver: local
+  pdf_outputs:
+    driver: local
+  pdf_fonts:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  pdf-network:
+    driver: bridge

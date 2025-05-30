@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Text Overlay Tool - Flask App</title>
+    <title>PDF Text Overlay Tool</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         * {
@@ -145,6 +145,25 @@
             pointer-events: none;
             transform: translate(-50%, -100%);
             white-space: nowrap;
+            z-index: 1000;
+        }
+
+        .coordinate-dot {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 999;
+            pointer-events: none;
+        }
+
+        .coordinate-dot.simple {
+            background-color: #667eea;
+        }
+
+        .coordinate-dot.conditional {
+            background-color: #ff9800;
         }
 
         /* Configuration Section */
@@ -294,13 +313,16 @@
         .config-output {
             background: #2d3748;
             color: #e2e8f0;
-            padding: 15px;
+            padding: 20px;
             border-radius: 8px;
             font-family: 'Courier New', monospace;
-            font-size: 0.85rem;
-            max-height: 300px;
+            font-size: 0.9rem;
+            min-height: 400px;
+            max-height: 600px;
             overflow-y: auto;
             white-space: pre-wrap;
+            border: 2px solid #4a5568;
+            line-height: 1.4;
         }
 
         .click-instruction {
@@ -375,7 +397,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>🚀 PDF Text Overlay Tool </h1>
+        <h1>🚀 PDF Text Overlay Tool</h1>
         <p>Upload, configure, and process PDF text overlays with real-time preview</p>
     </div>
 
@@ -402,7 +424,10 @@
 
             <div class="pdf-viewer" id="pdfViewer">
                 <div class="click-instruction">
-                    💡 Click anywhere on the PDF to add text overlay positions
+                    💡 <strong>Click the CENTER of checkboxes or text fields</strong>
+                    <br><small>The tool automatically adjusts coordinates for proper text positioning</small>
+                    <br><small>Blue overlays = Simple variables | Orange overlays = Conditional coordinates</small>
+                    <br><small>Hold <strong>Ctrl/Cmd</strong> + Click to add conditional coordinate to selected variable</small>
                 </div>
                 <canvas id="pdfCanvas" class="pdf-canvas"></canvas>
             </div>
@@ -446,6 +471,11 @@
                 <!-- Processing Section -->
                 <div class="section">
                     <h3>🔧 Process PDF</h3>
+                    <div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin-bottom: 10px; font-size: 0.85rem;">
+                        🎯 <strong>Coordinate Tips:</strong> Click the center of checkboxes/fields. The tool automatically adjusts for text baseline positioning.
+                        <br>• Blue dots = Simple text positions | Orange dots = Conditional positions
+                        <br>• If text is still off, fine-tune coordinates by ±2-5 points in variable settings
+                    </div>
                     <button class="btn btn-block" id="processBtn" disabled>🚀 Process PDF with Overlays</button>
                     <div class="loading" id="processLoading">
                         <div>⚙️ Processing PDF...</div>
@@ -461,10 +491,13 @@
                     <div style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin-bottom: 10px; font-size: 0.85rem;">
                         💡 <strong>Note:</strong> Page numbers in config are 0-based (Page 1 → 0, Page 2 → 1, etc.)
                     </div>
-                    <div class="config-output" id="configOutput">Click on the PDF to start adding variables...</div>
-                    <div style="display: flex; gap: 10px; margin-top: 10px;">
-                        <button class="btn" id="copyConfigBtn" style="flex: 1;">📋 Copy Config</button>
-                        <button class="btn btn-secondary" id="saveConfigBtn" style="flex: 1;">💾 Save Config</button>
+                    <div class="form-group">
+                        <label>Configuration JSON:</label>
+                        <div class="config-output" id="configOutput">Click on the PDF to start adding variables...</div>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
+                        <button class="btn" id="copyConfigBtn" style="flex: 1; min-width: 120px;">📋 Copy Config</button>
+                        <button class="btn btn-secondary" id="saveConfigBtn" style="flex: 1; min-width: 120px;">💾 Save Config</button>
                     </div>
                 </div>
             </div>
@@ -485,7 +518,8 @@
         let scale = 1.5;
         let pdfUploaded = false;
         let processedFilename = null;
-        let pdfPageDimensions = {}; // Store actual PDF page dimensions
+        let pdfPageDimensions = {};
+        let selectedVariableForConditional = -1;
 
         // Initialize PDF.js
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -665,6 +699,10 @@
                 pdfCanvas.width = viewport.width;
                 pdfCanvas.height = viewport.height;
                 
+                // Store the actual viewport dimensions for accurate coordinate conversion
+                const actualPageDim = pdfPageDimensions[pageNum] || { width: 612, height: 792 };
+                console.log(`Page ${pageNum}: Canvas ${viewport.width}x${viewport.height}, PDF ${actualPageDim.width}x${actualPageDim.height}`);
+
                 const renderContext = {
                     canvasContext: pdfCtx,
                     viewport: viewport
@@ -678,20 +716,65 @@
         }
 
         function renderTextOverlays() {
-            const existingOverlays = pdfViewer.querySelectorAll('.text-overlay');
-            existingOverlays.forEach(overlay => overlay.remove());
+            // Remove existing overlays and dots
+            const existingOverlays = pdfViewer.querySelectorAll('.text-overlay, .coordinate-dot');
+            existingOverlays.forEach(element => element.remove());
 
             const currentPageVars = variables.filter(v => v.page === currentPage);
             currentPageVars.forEach(variable => {
-                // Convert PDF coordinates back to canvas coordinates for display
-                const canvasCoords = pdfToCanvasCoordinates(variable.x, variable.y, currentPage);
-                
-                const overlay = document.createElement('div');
-                overlay.className = 'text-overlay';
-                overlay.textContent = `${variable.name} (${variable.x}, ${variable.y})`;
-                overlay.style.left = canvasCoords.x + 'px';
-                overlay.style.top = canvasCoords.y + 'px';
-                pdfViewer.appendChild(overlay);
+                if (variable.type === 'simple') {
+                    // Use display coordinates for visual overlay (exact click position)
+                    let canvasCoords;
+                    if (variable.displayX && variable.displayY) {
+                        // Use stored display coordinates
+                        canvasCoords = pdfToCanvasCoordinates(variable.displayX, variable.displayY, currentPage, true);
+                    } else {
+                        // Fallback for old variables - reverse the adjustment
+                        canvasCoords = pdfToCanvasCoordinates(variable.x, variable.y, currentPage, false);
+                    }
+
+                    // Create text overlay at exact click position
+                    const overlay = document.createElement('div');
+                    overlay.className = 'text-overlay';
+                    overlay.textContent = `${variable.name} (${variable.x}, ${variable.y})`;
+                    overlay.style.left = canvasCoords.x + 'px';
+                    overlay.style.top = canvasCoords.y + 'px';
+                    pdfViewer.appendChild(overlay);
+
+                    // Create precision dot at exact click position
+                    const dot = document.createElement('div');
+                    dot.className = 'coordinate-dot simple';
+                    dot.style.left = canvasCoords.x + 'px';
+                    dot.style.top = canvasCoords.y + 'px';
+                    pdfViewer.appendChild(dot);
+
+                } else if (variable.type === 'conditional') {
+                    // Render conditional coordinate overlays
+                    variable.conditionalCoordinates.forEach((cond, index) => {
+                        let canvasCoords;
+                        if (cond.displayX && cond.displayY) {
+                            canvasCoords = pdfToCanvasCoordinates(cond.displayX, cond.displayY, currentPage, true);
+                        } else {
+                            canvasCoords = pdfToCanvasCoordinates(cond.x, cond.y, currentPage, false);
+                        }
+
+                        // Create text overlay
+                        const overlay = document.createElement('div');
+                        overlay.className = 'text-overlay';
+                        overlay.style.background = 'rgba(255, 152, 0, 0.8)'; // Orange for conditional
+                        overlay.textContent = `${variable.name}[${cond.if_value || '?'}] (${cond.x}, ${cond.y})`;
+                        overlay.style.left = canvasCoords.x + 'px';
+                        overlay.style.top = canvasCoords.y + 'px';
+                        pdfViewer.appendChild(overlay);
+
+                        // Create precision dot
+                        const dot = document.createElement('div');
+                        dot.className = 'coordinate-dot conditional';
+                        dot.style.left = canvasCoords.x + 'px';
+                        dot.style.top = canvasCoords.y + 'px';
+                        pdfViewer.appendChild(dot);
+                    });
+                }
             });
         }
 
@@ -716,20 +799,59 @@
             const canvasX = Math.round(e.clientX - rect.left);
             const canvasY = Math.round(e.clientY - rect.top);
             
-            // Convert canvas coordinates to PDF coordinates
-            const pdfCoords = canvasToPDFCoordinates(canvasX, canvasY, currentPage);
-            
-            addVariableAtPosition(pdfCoords.x, pdfCoords.y, currentPage);
+            // Check if Ctrl/Cmd is held down for adding conditional coordinates
+            if (e.ctrlKey || e.metaKey) {
+                // Get adjusted coordinates for conditional coordinates
+                const pdfCoords = canvasToPDFCoordinates(canvasX, canvasY, currentPage, false);
+                addConditionalCoordinateByClick(pdfCoords.x, pdfCoords.y);
+            } else {
+                // For regular variables, addVariableAtPosition will handle both display and process coords
+                addVariableAtPosition(0, 0, currentPage); // Parameters not used anymore
+            }
         }
 
-        function canvasToPDFCoordinates(canvasX, canvasY, pageNum) {
-            // Get the current page dimensions
-            const page = pdfDoc.getPage(pageNum);
-            
+        function addConditionalCoordinateByClick(x, y) {
+            // Find conditional variables on the current page
+            const conditionalVars = variables.filter(v => v.type === 'conditional' && v.page === currentPage);
+
+            if (conditionalVars.length === 0) {
+                showNotification('No conditional variables on this page. Create a conditional variable first.', 'error');
+                return;
+            }
+
+            if (conditionalVars.length === 1) {
+                // Automatically add to the only conditional variable
+                const varIndex = variables.indexOf(conditionalVars[0]);
+                addConditionalCoordinate(varIndex);
+                // Update the last added coordinate with clicked position
+                const lastCondIndex = variables[varIndex].conditionalCoordinates.length - 1;
+                updateConditionalCoordinate(varIndex, lastCondIndex, 'x', x);
+                updateConditionalCoordinate(varIndex, lastCondIndex, 'y', y);
+                updateVariablesList();
+                showNotification(`Added conditional coordinate to "${conditionalVars[0].name}"`);
+            } else {
+                // Multiple conditional variables - let user choose
+                const varNames = conditionalVars.map((v, i) => `${i + 1}. ${v.name}`).join('\n');
+                const choice = prompt(`Multiple conditional variables found. Enter the number for:\n${varNames}`);
+                const choiceIndex = parseInt(choice) - 1;
+
+                if (choiceIndex >= 0 && choiceIndex < conditionalVars.length) {
+                    const varIndex = variables.indexOf(conditionalVars[choiceIndex]);
+                    addConditionalCoordinate(varIndex);
+                    const lastCondIndex = variables[varIndex].conditionalCoordinates.length - 1;
+                    updateConditionalCoordinate(varIndex, lastCondIndex, 'x', x);
+                    updateConditionalCoordinate(varIndex, lastCondIndex, 'y', y);
+                    updateVariablesList();
+                    showNotification(`Added conditional coordinate to "${conditionalVars[choiceIndex].name}"`);
+                }
+            }
+        }
+
+        function canvasToPDFCoordinates(canvasX, canvasY, pageNum, forDisplay = false) {
             // Get actual PDF page dimensions
             const pdfPageDim = pdfPageDimensions[pageNum] || { width: 612, height: 792 };
             
-            // Calculate the scale factors
+            // Calculate the scale factors between canvas and PDF
             const scaleX = pdfPageDim.width / pdfCanvas.width;
             const scaleY = pdfPageDim.height / pdfCanvas.height;
             
@@ -738,32 +860,72 @@
             // PDF coordinate system has origin at bottom-left, canvas at top-left
             const pdfY = Math.round(pdfPageDim.height - (canvasY * scaleY));
             
-            return { x: pdfX, y: pdfY };
+            if (forDisplay) {
+                // Return exact coordinates for visual display (no adjustment)
+                return { x: pdfX, y: pdfY };
+            } else {
+                // Apply adjustment for actual PDF text positioning
+                const adjustedPdfX = pdfX - 3; // Slight left adjustment for horizontal center
+                const adjustedPdfY = pdfY - 6; // SUBTRACT to move DOWN (lower Y value in PDF = lower position)
+
+                console.log(`Canvas: (${canvasX}, ${canvasY}) -> PDF Display: (${pdfX}, ${pdfY}) -> PDF Final: (${adjustedPdfX}, ${adjustedPdfY})`);
+                console.log(`Canvas size: ${pdfCanvas.width}x${pdfCanvas.height}, PDF size: ${pdfPageDim.width}x${pdfPageDim.height}`);
+                console.log(`Scale factors: X=${scaleX.toFixed(3)}, Y=${scaleY.toFixed(3)}`);
+
+                return { x: adjustedPdfX, y: adjustedPdfY };
+            }
         }
 
-        function pdfToCanvasCoordinates(pdfX, pdfY, pageNum) {
+        function pdfToCanvasCoordinates(pdfX, pdfY, pageNum, isDisplayCoords = false) {
             // Convert PDF coordinates back to canvas coordinates for overlay display
             const pdfPageDim = pdfPageDimensions[pageNum] || { width: 612, height: 792 };
             
             const scaleX = pdfCanvas.width / pdfPageDim.width;
             const scaleY = pdfCanvas.height / pdfPageDim.height;
-            
-            const canvasX = Math.round(pdfX * scaleX);
-            const canvasY = Math.round((pdfPageDim.height - pdfY) * scaleY);
-            
+
+            let displayPdfX, displayPdfY;
+
+            if (isDisplayCoords) {
+                // These are already display coordinates, no adjustment needed
+                displayPdfX = pdfX + 50;
+                displayPdfY = pdfY - 80;
+            } else {
+                // These are adjusted coordinates, reverse the adjustment for display
+                displayPdfX = pdfX - 2; // Reverse the left adjustment
+                displayPdfY = pdfY - 2; // Reverse the down adjustment
+
+                console.log(displayPdfX, displayPdfY)
+            }
+
+            const canvasX = Math.round(displayPdfX * scaleX);
+            const canvasY = Math.round((pdfPageDim.height - displayPdfY) * scaleY);
+
             return { x: canvasX, y: canvasY };
         }
 
         function addVariableAtPosition(x, y, page) {
+            const canvasRect = pdfCanvas.getBoundingClientRect();
+            const canvasX = Math.round(event.clientX - canvasRect.left);
+            const canvasY = Math.round(event.clientY - canvasRect.top);
+
+            // Get display coordinates (exact click position) for visual overlay
+            const displayCoords = canvasToPDFCoordinates(canvasX, canvasY, page, true);
+            // Get adjusted coordinates for actual PDF processing
+            const processCoords = canvasToPDFCoordinates(canvasX, canvasY, page, false);
+
             const variableName = `var_${variables.length + 1}`;
             const variable = {
                 name: variableName,
-                x: x,
-                y: y,
+                x: processCoords.x, // Adjusted coordinates for PDF processing
+                y: processCoords.y,
+                displayX: displayCoords.x, // Exact coordinates for visual display
+                displayY: displayCoords.y,
                 page: page,
-                fontSize: 12
+                fontSize: 12,
+                type: 'simple',
+                conditionalCoordinates: []
             };
-            
+
             variables.push(variable);
             updateVariablesList();
             updateConfiguration();
@@ -775,15 +937,17 @@
             const pdfPageDim = pdfPageDimensions[currentPage] || { width: 612, height: 792 };
             const centerX = Math.round(pdfPageDim.width / 2);
             const centerY = Math.round(pdfPageDim.height / 2);
-            
+
             const variable = {
                 name: `var_${variables.length + 1}`,
                 x: centerX,
                 y: centerY,
                 page: currentPage,
-                fontSize: 12
+                fontSize: 12,
+                type: 'simple',
+                conditionalCoordinates: []
             };
-            
+
             variables.push(variable);
             updateVariablesList();
             updateConfiguration();
@@ -799,8 +963,23 @@
 
         function updateVariable(index, field, value) {
             if (variables[index]) {
-                variables[index][field] = field === 'fontSize' || field === 'x' || field === 'y' || field === 'page' ? 
-                    parseInt(value) || 0 : value;
+                if (field === 'fontSize' || field === 'x' || field === 'y' || field === 'page') {
+                    variables[index][field] = parseInt(value) || 0;
+                } else {
+                    variables[index][field] = value;
+                }
+
+                // If switching to conditional type, initialize conditional coordinates
+                if (field === 'type' && value === 'conditional' && !variables[index].conditionalCoordinates.length) {
+                    variables[index].conditionalCoordinates = [{
+                        if_value: '',
+                        print_pattern: '*',
+                        x: variables[index].x,
+                        y: variables[index].y
+                    }];
+                }
+
+                updateVariablesList();
                 updateConfiguration();
                 if (field === 'x' || field === 'y' || field === 'page') {
                     renderTextOverlays();
@@ -808,12 +987,108 @@
             }
         }
 
+        function addConditionalCoordinate(variableIndex) {
+            if (variables[variableIndex]) {
+                const pdfPageDim = pdfPageDimensions[variables[variableIndex].page] || { width: 612, height: 792 };
+                variables[variableIndex].conditionalCoordinates.push({
+                    if_value: '',
+                    print_pattern: '*',
+                    x: Math.round(pdfPageDim.width / 2),
+                    y: Math.round(pdfPageDim.height / 2)
+                });
+                updateVariablesList();
+                updateConfiguration();
+                renderTextOverlays();
+            }
+        }
+
+        function removeConditionalCoordinate(variableIndex, condIndex) {
+            if (variables[variableIndex] && variables[variableIndex].conditionalCoordinates[condIndex]) {
+                variables[variableIndex].conditionalCoordinates.splice(condIndex, 1);
+                updateVariablesList();
+                updateConfiguration();
+                renderTextOverlays();
+            }
+        }
+
+        function updateConditionalCoordinate(variableIndex, condIndex, field, value) {
+            if (variables[variableIndex] && variables[variableIndex].conditionalCoordinates[condIndex]) {
+                if (field === 'x' || field === 'y') {
+                    variables[variableIndex].conditionalCoordinates[condIndex][field] = parseInt(value) || 0;
+                } else {
+                    variables[variableIndex].conditionalCoordinates[condIndex][field] = value;
+                }
+                updateConfiguration();
+                if (field === 'x' || field === 'y') {
+                    renderTextOverlays();
+                }
+            }
+        }
+
         function updateVariablesList() {
             variablesList.innerHTML = '';
-            
+
             variables.forEach((variable, index) => {
                 const div = document.createElement('div');
                 div.className = 'variable-item';
+
+                let conditionalSection = '';
+                if (variable.type === 'conditional') {
+                    let conditionalInputs = '';
+                    variable.conditionalCoordinates.forEach((cond, condIndex) => {
+                        conditionalInputs += `
+                            <div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #ffeaa7;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <strong>Condition ${condIndex + 1}</strong>
+                                    <button type="button" onclick="removeConditionalCoordinate(${index}, ${condIndex})" 
+                                            style="background: #dc3545; color: white; border: none; padding: 3px 8px; border-radius: 3px; font-size: 0.75rem;">Remove</button>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                                    <div>
+                                        <label style="font-size: 0.8rem; font-weight: 600;">If Value:</label>
+                                        <input type="text" class="form-control" style="padding: 6px;" value="${cond.if_value || ''}" 
+                                               placeholder="e.g., Male, Yes, Option1"
+                                               onchange="updateConditionalCoordinate(${index}, ${condIndex}, 'if_value', this.value)"
+                                               oninput="updateConditionalCoordinate(${index}, ${condIndex}, 'if_value', this.value)">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 0.8rem; font-weight: 600;">Print Pattern:</label>
+                                        <input type="text" class="form-control" style="padding: 6px;" value="${cond.print_pattern || '*'}" 
+                                               placeholder="e.g., *, ✓, X"
+                                               onchange="updateConditionalCoordinate(${index}, ${condIndex}, 'print_pattern', this.value)"
+                                               oninput="updateConditionalCoordinate(${index}, ${condIndex}, 'print_pattern', this.value)">
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                    <div>
+                                        <label style="font-size: 0.8rem; font-weight: 600;">X Coordinate:</label>
+                                        <input type="number" class="form-control" style="padding: 6px;" value="${cond.x || 0}"
+                                               onchange="updateConditionalCoordinate(${index}, ${condIndex}, 'x', this.value)"
+                                               oninput="updateConditionalCoordinate(${index}, ${condIndex}, 'x', this.value)">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 0.8rem; font-weight: 600;">Y Coordinate:</label>
+                                        <input type="number" class="form-control" style="padding: 6px;" value="${cond.y || 0}"
+                                               onchange="updateConditionalCoordinate(${index}, ${condIndex}, 'y', this.value)"
+                                               oninput="updateConditionalCoordinate(${index}, ${condIndex}, 'y', this.value)">
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    conditionalSection = `
+                        <div style="margin-top: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <label style="font-weight: 600; color: #ff8c00;">Conditional Coordinates:</label>
+                                <button type="button" onclick="addConditionalCoordinate(${index})"
+                                        style="background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 5px; font-size: 0.8rem;">+ Add Condition</button>
+                            </div>
+                            ${conditionalInputs}
+                        </div>
+                    `;
+                }
+
                 div.innerHTML = `
                     <div class="variable-header">
                         <strong>Variable ${index + 1}</strong>
@@ -824,33 +1099,45 @@
                         <input type="text" class="form-control" value="${variable.name}" 
                                onchange="updateVariable(${index}, 'name', this.value)">
                     </div>
-                    <div class="coordinate-display">
-                        Display Page: ${variable.page} → Config Page: ${variable.page - 1} (0-based)
-                        <br>PDF Coords: X: ${variable.x} | Y: ${variable.y}
-                        <br><small style="color: #6c757d;">pdf_text_overlay uses 0-based page numbering</small>
-                    </div>
                     <div class="form-group">
-                        <label>Page Number:</label>
-                        <input type="number" class="form-control" value="${variable.page}" min="1" max="${totalPages || 999}"
-                               onchange="updateVariable(${index}, 'page', this.value)">
+                        <label>Variable Type:</label>
+                        <select class="form-control" onchange="updateVariable(${index}, 'type', this.value)">
+                            <option value="simple" ${variable.type === 'simple' ? 'selected' : ''}>Simple (Single Position)</option>
+                            <option value="conditional" ${variable.type === 'conditional' ? 'selected' : ''}>Conditional (Multiple Positions)</option>
+                        </select>
                     </div>
-                    <div style="display: flex; gap: 10px;">
-                        <div class="form-group" style="flex: 1;">
-                            <label>X Coordinate:</label>
-                            <input type="number" class="form-control" value="${variable.x}"
-                                   onchange="updateVariable(${index}, 'x', this.value)">
+
+                    ${variable.type === 'simple' ? `
+                        <div class="coordinate-display">
+                            Display Page: ${variable.page} → Config Page: ${variable.page - 1} (0-based)
+                            <br>PDF Coords: X: ${variable.x} | Y: ${variable.y}
+                            <br><small style="color: #6c757d;">pdf_text_overlay uses 0-based page numbering</small>
                         </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label>Y Coordinate:</label>
-                            <input type="number" class="form-control" value="${variable.y}"
-                                   onchange="updateVariable(${index}, 'y', this.value)">
+                        <div class="form-group">
+                            <label>Page Number:</label>
+                            <input type="number" class="form-control" value="${variable.page}" min="1" max="${totalPages || 999}"
+                                   onchange="updateVariable(${index}, 'page', this.value)">
                         </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Font Size:</label>
-                        <input type="number" class="form-control" value="${variable.fontSize}" min="6" max="72"
-                               onchange="updateVariable(${index}, 'fontSize', this.value)">
-                    </div>
+                        <div style="display: flex; gap: 10px;">
+                            <div class="form-group" style="flex: 1;">
+                                <label>X Coordinate:</label>
+                                <input type="number" class="form-control" value="${variable.x}"
+                                       onchange="updateVariable(${index}, 'x', this.value)">
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label>Y Coordinate:</label>
+                                <input type="number" class="form-control" value="${variable.y}"
+                                       onchange="updateVariable(${index}, 'y', this.value)">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Font Size:</label>
+                            <input type="number" class="form-control" value="${variable.fontSize}" min="6" max="72"
+                                   onchange="updateVariable(${index}, 'fontSize', this.value)">
+                        </div>
+                    ` : ''}
+
+                    ${conditionalSection}
                 `;
                 variablesList.appendChild(div);
             });
@@ -869,12 +1156,26 @@
                 if (!pageGroups[zeroBasedPage]) {
                     pageGroups[zeroBasedPage] = [];
                 }
-                pageGroups[zeroBasedPage].push({
-                    name: variable.name,
-                    "x-coordinate": variable.x,
-                    "y-coordinate": variable.y,
-                    font_size: variable.fontSize
-                });
+
+                if (variable.type === 'simple') {
+                    pageGroups[zeroBasedPage].push({
+                        name: variable.name,
+                        "x-coordinate": variable.x,
+                        "y-coordinate": variable.y,
+                        font_size: variable.fontSize
+                    });
+                } else if (variable.type === 'conditional') {
+                    const conditionalVar = {
+                        name: variable.name,
+                        conditional_coordinates: variable.conditionalCoordinates.map(cond => ({
+                            if_value: cond.if_value,
+                            print_pattern: cond.print_pattern,
+                            "x-coordinate": cond.x,
+                            "y-coordinate": cond.y
+                        }))
+                    };
+                    pageGroups[zeroBasedPage].push(conditionalVar);
+                }
             });
 
             const configuration = Object.keys(pageGroups).map(page => ({
@@ -909,12 +1210,26 @@
                 if (!pageGroups[zeroBasedPage]) {
                     pageGroups[zeroBasedPage] = [];
                 }
-                pageGroups[zeroBasedPage].push({
-                    name: variable.name,
-                    "x-coordinate": variable.x,
-                    "y-coordinate": variable.y,
-                    font_size: variable.fontSize
-                });
+
+                if (variable.type === 'simple') {
+                    pageGroups[zeroBasedPage].push({
+                        name: variable.name,
+                        "x-coordinate": variable.x,
+                        "y-coordinate": variable.y,
+                        font_size: variable.fontSize
+                    });
+                } else if (variable.type === 'conditional') {
+                    const conditionalVar = {
+                        name: variable.name,
+                        conditional_coordinates: variable.conditionalCoordinates.map(cond => ({
+                            if_value: cond.if_value,
+                            print_pattern: cond.print_pattern,
+                            "x-coordinate": cond.x,
+                            "y-coordinate": cond.y
+                        }))
+                    };
+                    pageGroups[zeroBasedPage].push(conditionalVar);
+                }
             });
 
             const configuration = Object.keys(pageGroups).map(page => ({
@@ -954,7 +1269,9 @@
 
             const sampleObj = {};
             variableNames.forEach(name => {
-                if (name.toLowerCase().includes('name')) {
+                if (name.toLowerCase().includes('gender')) {
+                    sampleObj[name] = 'Male'; // Will trigger conditional coordinates
+                } else if (name.toLowerCase().includes('name')) {
                     sampleObj[name] = 'John Doe';
                 } else if (name.toLowerCase().includes('email')) {
                     sampleObj[name] = 'john.doe@example.com';
@@ -966,6 +1283,8 @@
                     sampleObj[name] = '123 Main St, City, State 12345';
                 } else if (name.toLowerCase().includes('company')) {
                     sampleObj[name] = 'Example Company Inc.';
+                } else if (name.toLowerCase().includes('status') || name.toLowerCase().includes('type')) {
+                    sampleObj[name] = 'Active'; // Will trigger conditional coordinates
                 } else {
                     sampleObj[name] = `Sample ${name}`;
                 }
@@ -1004,12 +1323,26 @@
                 if (!pageGroups[zeroBasedPage]) {
                     pageGroups[zeroBasedPage] = [];
                 }
-                pageGroups[zeroBasedPage].push({
-                    name: variable.name,
-                    "x-coordinate": variable.x,
-                    "y-coordinate": variable.y,
-                    font_size: variable.fontSize
-                });
+
+                if (variable.type === 'simple') {
+                    pageGroups[zeroBasedPage].push({
+                        name: variable.name,
+                        "x-coordinate": variable.x,
+                        "y-coordinate": variable.y,
+                        font_size: variable.fontSize
+                    });
+                } else if (variable.type === 'conditional') {
+                    const conditionalVar = {
+                        name: variable.name,
+                        conditional_coordinates: variable.conditionalCoordinates.map(cond => ({
+                            if_value: cond.if_value,
+                            print_pattern: cond.print_pattern,
+                            "x-coordinate": cond.x,
+                            "y-coordinate": cond.y
+                        }))
+                    };
+                    pageGroups[zeroBasedPage].push(conditionalVar);
+                }
             });
 
             const configuration = Object.keys(pageGroups).map(page => ({
@@ -1061,7 +1394,9 @@
   "email": "john.doe@example.com",
   "date": "2024-01-15",
   "company": "Example Corp",
-  "position": "Software Engineer"
+  "position": "Software Engineer",
+  "gender": "Male",
+  "status": "Active"
 }`;
     </script>
 </body>
