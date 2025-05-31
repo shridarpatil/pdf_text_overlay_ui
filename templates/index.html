@@ -150,8 +150,8 @@
 
         .coordinate-dot {
             position: absolute;
-            width: 4px;
-            height: 4px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
             transform: translate(-50%, -50%);
             z-index: 999;
@@ -323,6 +323,7 @@
             white-space: pre-wrap;
             border: 2px solid #4a5568;
             line-height: 1.4;
+            width: 100%;
         }
 
         .click-instruction {
@@ -490,14 +491,16 @@
                     <h3>📋 Generated Configuration</h3>
                     <div style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin-bottom: 10px; font-size: 0.85rem;">
                         💡 <strong>Note:</strong> Page numbers in config are 0-based (Page 1 → 0, Page 2 → 1, etc.)
+                        <br>📝 You can edit the configuration directly below - changes will be applied when you click "Load from Config"
                     </div>
                     <div class="form-group">
-                        <label>Configuration JSON:</label>
-                        <div class="config-output" id="configOutput">Click on the PDF to start adding variables...</div>
+                        <label>Configuration JSON (Editable):</label>
+                        <textarea class="config-output" id="configOutput" contenteditable="true">Click on the PDF to start adding variables...</textarea>
                     </div>
                     <div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
                         <button class="btn" id="copyConfigBtn" style="flex: 1; min-width: 120px;">📋 Copy Config</button>
                         <button class="btn btn-secondary" id="saveConfigBtn" style="flex: 1; min-width: 120px;">💾 Save Config</button>
+                        <button class="btn btn-success" id="loadFromConfigBtn" style="flex: 1; min-width: 140px;">📥 Load from Config</button>
                     </div>
                 </div>
             </div>
@@ -539,6 +542,7 @@
         const configOutput = document.getElementById('configOutput');
         const copyConfigBtn = document.getElementById('copyConfigBtn');
         const saveConfigBtn = document.getElementById('saveConfigBtn');
+        const loadFromConfigBtn = document.getElementById('loadFromConfigBtn');
         const sampleData = document.getElementById('sampleData');
         const prefillBtn = document.getElementById('prefillBtn');
         const processBtn = document.getElementById('processBtn');
@@ -559,6 +563,7 @@
         addVariableBtn.addEventListener('click', addVariable);
         copyConfigBtn.addEventListener('click', copyConfiguration);
         saveConfigBtn.addEventListener('click', saveConfiguration);
+        loadFromConfigBtn.addEventListener('click', loadFromConfiguration);
         prefillBtn.addEventListener('click', prefillSampleData);
         processBtn.addEventListener('click', processDocument);
         downloadBtn.addEventListener('click', downloadProcessedPDF);
@@ -887,8 +892,9 @@
 
             if (isDisplayCoords) {
                 // These are already display coordinates, no adjustment needed
-                displayPdfX = pdfX + 50;
-                displayPdfY = pdfY - 80;
+                displayPdfX = pdfX + 89;
+                displayPdfY = pdfY - 89;
+                console.log("display", displayPdfX, displayPdfY)
             } else {
                 // These are adjusted coordinates, reverse the adjustment for display
                 displayPdfX = pdfX - 2; // Reverse the left adjustment
@@ -930,6 +936,78 @@
             updateVariablesList();
             updateConfiguration();
             renderTextOverlays();
+        }
+
+        function loadFromConfiguration() {
+            try {
+                const configText = configOutput.value || configOutput.textContent;
+                if (!configText || configText === 'Click on the PDF to start adding variables...') {
+                    showNotification('No configuration to load', 'error');
+                    return;
+                }
+
+                const config = JSON.parse(configText);
+                if (!Array.isArray(config)) {
+                    showNotification('Invalid configuration format - must be an array', 'error');
+                    return;
+                }
+
+                // Convert configuration back to variables
+                variables = [];
+                config.forEach(pageConfig => {
+                    const displayPage = pageConfig.page_number + 1; // Convert 0-based to 1-based for display
+
+                    if (!pageConfig.variables || !Array.isArray(pageConfig.variables)) {
+                        console.warn(`Page ${pageConfig.page_number} has no variables array`);
+                        return;
+                    }
+
+                    pageConfig.variables.forEach(variable => {
+                        if (variable.conditional_coordinates) {
+                            // Conditional variable
+                            const newVar = {
+                                name: variable.name,
+                                x: 0, // Not used for conditional
+                                y: 0, // Not used for conditional
+                                page: displayPage,
+                                fontSize: 12,
+                                type: 'conditional',
+                                conditionalCoordinates: variable.conditional_coordinates.map(cond => ({
+                                    if_value: cond.if_value || '',
+                                    print_pattern: cond.print_pattern || '*',
+                                    x: cond['x-coordinate'] || 0,
+                                    y: cond['y-coordinate'] || 0,
+                                    displayX: cond['x-coordinate'] || 0, // Use same coordinates for display
+                                    displayY: cond['y-coordinate'] || 0
+                                }))
+                            };
+                            variables.push(newVar);
+                        } else {
+                            // Simple variable
+                            const newVar = {
+                                name: variable.name,
+                                x: variable['x-coordinate'] || 0,
+                                y: variable['y-coordinate'] || 0,
+                                displayX: variable['x-coordinate'] || 0, // Use same coordinates for display
+                                displayY: variable['y-coordinate'] || 0,
+                                page: displayPage,
+                                fontSize: variable.font_size || 12,
+                                type: 'simple',
+                                conditionalCoordinates: []
+                            };
+                            variables.push(newVar);
+                        }
+                    });
+                });
+
+                updateVariablesList();
+                renderTextOverlays();
+                showNotification(`Configuration loaded successfully! ${variables.length} variables imported.`);
+
+            } catch (error) {
+                showNotification('Invalid JSON configuration: ' + error.message, 'error');
+                console.error('Config parsing error:', error);
+            }
         }
 
         function addVariable() {
