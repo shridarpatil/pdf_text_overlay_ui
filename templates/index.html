@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Text Overlay Tool</title>
+    <title>Enhanced PDF Text Overlay Tool</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         * {
@@ -148,6 +148,32 @@
             z-index: 1000;
         }
 
+        .image-overlay {
+            position: absolute;
+            background: rgba(76, 175, 80, 0.8);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            pointer-events: none;
+            transform: translate(-50%, -100%);
+            white-space: nowrap;
+            z-index: 1000;
+        }
+
+        .shape-overlay {
+            position: absolute;
+            background: rgba(255, 152, 0, 0.8);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            pointer-events: none;
+            transform: translate(-50%, -100%);
+            white-space: nowrap;
+            z-index: 1000;
+        }
+
         .coordinate-dot {
             position: absolute;
             width: 8px;
@@ -163,6 +189,14 @@
         }
 
         .coordinate-dot.conditional {
+            background-color: #ff9800;
+        }
+
+        .coordinate-dot.image {
+            background-color: #4caf50;
+        }
+
+        .coordinate-dot.shape {
             background-color: #ff9800;
         }
 
@@ -270,12 +304,20 @@
             background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
         }
 
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #ff8c00 100%);
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        }
+
         .btn-block {
             width: 100%;
             margin-bottom: 10px;
         }
 
-        .variable-item {
+        .variable-item, .image-item, .shape-item {
             background: white;
             border: 1px solid #dee2e6;
             border-radius: 8px;
@@ -284,7 +326,15 @@
             position: relative;
         }
 
-        .variable-header {
+        .image-item {
+            border-left: 4px solid #4caf50;
+        }
+
+        .shape-item {
+            border-left: 4px solid #ff9800;
+        }
+
+        .variable-header, .image-header, .shape-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -383,6 +433,85 @@
             display: block;
         }
 
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            background: #e9ecef;
+            padding: 5px;
+            border-radius: 8px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            background: transparent;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .mode-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .image-upload-area {
+            border: 2px dashed #4caf50;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .image-upload-area:hover {
+            background: rgba(76, 175, 80, 0.1);
+        }
+
+        .image-list {
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+        }
+
+        .image-item-small {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .shape-preview {
+            width: 30px;
+            height: 30px;
+            border: 2px solid #ff9800;
+            display: inline-block;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        .shape-preview.rectangle {
+            border-radius: 0;
+        }
+
+        .shape-preview.circle {
+            border-radius: 50%;
+        }
+
+        .shape-preview.line {
+            border: none;
+            border-top: 2px solid #ff9800;
+            height: 0;
+            margin-top: 15px;
+        }
+
         @media (max-width: 1200px) {
             .main-container {
                 flex-direction: column;
@@ -398,8 +527,8 @@
 </head>
 <body>
     <div class="header">
-        <h1>🚀 PDF Text Overlay Tool</h1>
-        <p>Upload, configure, and process PDF text overlays with real-time preview</p>
+        <h1>🚀 Enhanced PDF Overlay Tool</h1>
+        <p>Upload, configure, and process PDF with text, images, and shapes overlays</p>
     </div>
 
     <div class="main-container">
@@ -423,12 +552,15 @@
                 </div>
             </div>
 
-            <div class="pdf-viewer" id="pdfViewer">
+                            <div class="pdf-viewer" id="pdfViewer">
                 <div class="click-instruction">
-                    💡 <strong>Click the CENTER of checkboxes or text fields</strong>
-                    <br><small>The tool automatically adjusts coordinates for proper text positioning</small>
-                    <br><small>Blue overlays = Simple variables | Orange overlays = Conditional coordinates</small>
-                    <br><small>Hold <strong>Ctrl/Cmd</strong> + Click to add conditional coordinate to selected variable</small>
+                    🎯 <strong>Current Mode: <span id="currentMode">Text</span></strong>
+                    <br><small id="modeInstructions">💡 Click to add text variables | 🖼️ Click to place images | 🔲 Click to draw shapes</small>
+                    <br><small>Blue = Text | Green = Images | Orange = Shapes</small>
+                    <br><small>Hold <strong>Ctrl/Cmd</strong> + Click to add conditional coordinates to text variables</small>
+                    <div id="lineDrawingControls" style="display: none; margin-top: 10px;">
+                        <button class="btn btn-secondary" id="cancelLineBtn" style="padding: 5px 10px; font-size: 0.8rem;">❌ Cancel Line Drawing</button>
+                    </div>
                 </div>
                 <canvas id="pdfCanvas" class="pdf-canvas"></canvas>
             </div>
@@ -445,6 +577,34 @@
             </div>
             
             <div class="config-content">
+                <!-- Mode Selector -->
+                <div class="section">
+                    <h3>🎯 Editing Mode</h3>
+                    <div class="mode-selector">
+                        <button class="mode-btn active" id="textMode" onclick="setMode('text')">📝 Text</button>
+                        <button class="mode-btn" id="imageMode" onclick="setMode('image')">🖼️ Images</button>
+                        <button class="mode-btn" id="shapeMode" onclick="setMode('shape')">🔲 Shapes</button>
+                    </div>
+                    <div id="modeInstructions" class="click-instruction">
+                        <strong>Text Mode:</strong> Click on the PDF to add text variables at specific positions.
+                    </div>
+                </div>
+
+                <!-- Image Upload Section -->
+                <div class="section" id="imageUploadSection" style="display: none;">
+                    <h3>🖼️ Image Upload</h3>
+                    <div class="image-upload-area" id="imageUploadArea">
+                        <div>📷 Click to upload images (PNG, JPG, GIF)</div>
+                        <input type="file" id="imageInput" accept=".png,.jpg,.jpeg,.gif,.bmp" multiple style="display: none;">
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <button class="btn btn-info" onclick="refreshImageList()" style="flex: 1;">🔄 Refresh Images</button>
+                    </div>
+                    <div id="imageList" class="image-list">
+                        <div>No images uploaded yet</div>
+                    </div>
+                </div>
+
                 <!-- Sample Data Section -->
                 <div class="section">
                     <h3>📝 Sample Data</h3>
@@ -469,15 +629,30 @@
                     <button class="btn btn-secondary btn-block" id="addVariableBtn">+ Add Variable</button>
                 </div>
 
+                <!-- Images Section -->
+                <div class="section">
+                    <h3>🖼️ Image Overlays</h3>
+                    <div id="imagesList">
+                        <!-- Images will be added here dynamically -->
+                    </div>
+                </div>
+
+                <!-- Shapes Section -->
+                <div class="section">
+                    <h3>🔲 Shape Overlays</h3>
+                    <div id="shapesList">
+                        <!-- Shapes will be added here dynamically -->
+                    </div>
+                </div>
+
                 <!-- Processing Section -->
                 <div class="section">
                     <h3>🔧 Process PDF</h3>
                     <div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin-bottom: 10px; font-size: 0.85rem;">
-                        🎯 <strong>Coordinate Tips:</strong> Click the center of checkboxes/fields. The tool automatically adjusts for text baseline positioning.
-                        <br>• Blue dots = Simple text positions | Orange dots = Conditional positions
-                        <br>• If text is still off, fine-tune coordinates by ±2-5 points in variable settings
+                        🎯 <strong>Tips:</strong> Click the center of elements for precise positioning. Different modes place different overlay types.
+                        <br>• Blue dots = Text positions | Green dots = Image positions | Orange dots = Shape positions
                     </div>
-                    <button class="btn btn-block" id="processBtn" disabled>🚀 Process PDF with Overlays</button>
+                    <button class="btn btn-block" id="processBtn" disabled>🚀 Process PDF with All Overlays</button>
                     <div class="loading" id="processLoading">
                         <div>⚙️ Processing PDF...</div>
                     </div>
@@ -491,16 +666,18 @@
                     <h3>📋 Generated Configuration</h3>
                     <div style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin-bottom: 10px; font-size: 0.85rem;">
                         💡 <strong>Note:</strong> Page numbers in config are 0-based (Page 1 → 0, Page 2 → 1, etc.)
-                        <br>📝 You can edit the configuration directly below - changes will be applied when you click "Load from Config"
+                        <br>📝 Shapes are converted to draw_shape variables with coordinates in inches (72 DPI conversion)
+                        <br>🎨 Colors are converted to RGB values (0.0-1.0) in the draw_shape format
                     </div>
                     <div class="form-group">
                         <label>Configuration JSON (Editable):</label>
-                        <textarea class="config-output" id="configOutput" contenteditable="true">Click on the PDF to start adding variables...</textarea>
+                        <textarea class="config-output" id="configOutput" contenteditable="true">Click on the PDF to start adding elements...</textarea>
                     </div>
                     <div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
                         <button class="btn" id="copyConfigBtn" style="flex: 1; min-width: 120px;">📋 Copy Config</button>
                         <button class="btn btn-secondary" id="saveConfigBtn" style="flex: 1; min-width: 120px;">💾 Save Config</button>
                         <button class="btn btn-success" id="loadFromConfigBtn" style="flex: 1; min-width: 140px;">📥 Load from Config</button>
+                        <button class="btn btn-info" id="testImagesBtn" style="flex: 1; min-width: 120px;">🔍 Test Images</button>
                     </div>
                 </div>
             </div>
@@ -518,11 +695,16 @@
         let pdfCanvas = null;
         let pdfCtx = null;
         let variables = [];
+        let images = [];
+        let shapes = [];
         let scale = 1.5;
         let pdfUploaded = false;
         let processedFilename = null;
         let pdfPageDimensions = {};
-        let selectedVariableForConditional = -1;
+        let currentMode = 'text'; // text, image, shape
+        let uploadedImages = [];
+        let lineDrawingState = null; // null, 'waiting_for_start', 'waiting_for_end'
+        let tempLineStart = null; // stores start point for line drawing
 
         // Initialize PDF.js
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -538,6 +720,8 @@
         const prevPageBtn = document.getElementById('prevPage');
         const nextPageBtn = document.getElementById('nextPage');
         const variablesList = document.getElementById('variablesList');
+        const imagesList = document.getElementById('imagesList');
+        const shapesList = document.getElementById('shapesList');
         const addVariableBtn = document.getElementById('addVariableBtn');
         const configOutput = document.getElementById('configOutput');
         const copyConfigBtn = document.getElementById('copyConfigBtn');
@@ -551,6 +735,15 @@
         const processLoading = document.getElementById('processLoading');
         const downloadSection = document.getElementById('downloadSection');
         const notification = document.getElementById('notification');
+        const imageUploadArea = document.getElementById('imageUploadArea');
+        const imageInput = document.getElementById('imageInput');
+        const imageList = document.getElementById('imageList');
+        const imageUploadSection = document.getElementById('imageUploadSection');
+        const currentModeSpan = document.getElementById('currentMode');
+        const modeInstructions = document.getElementById('modeInstructions');
+        const cancelLineBtn = document.getElementById('cancelLineBtn');
+        const lineDrawingControls = document.getElementById('lineDrawingControls');
+        const testImagesBtn = document.getElementById('testImagesBtn');
 
         // Event listeners
         uploadArea.addEventListener('click', () => pdfInput.click());
@@ -567,6 +760,72 @@
         prefillBtn.addEventListener('click', prefillSampleData);
         processBtn.addEventListener('click', processDocument);
         downloadBtn.addEventListener('click', downloadProcessedPDF);
+        imageUploadArea.addEventListener('click', () => imageInput.click());
+        imageInput.addEventListener('change', handleImageUpload);
+        cancelLineBtn.addEventListener('click', cancelLineDrawing);
+        testImagesBtn.addEventListener('click', testImageAccessibility);
+
+        // Mode management
+        function setMode(mode) {
+            // Reset line drawing state when switching modes
+            if (currentMode === 'shape' && lineDrawingState) {
+                lineDrawingState = null;
+                tempLineStart = null;
+                removeTemporaryLinePoints();
+            }
+            
+            currentMode = mode;
+            
+            // Update UI
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(mode + 'Mode').classList.add('active');
+            
+            currentModeSpan.textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+            
+            updateModeInstructions();
+            
+            // Show/hide relevant sections
+            imageUploadSection.style.display = mode === 'image' ? 'block' : 'none';
+            
+            // Update cursor
+            pdfCanvas.style.cursor = mode === 'text' ? 'crosshair' : 
+                                   mode === 'image' ? 'copy' : 'crosshair';
+        }
+
+        function updateModeInstructions() {
+            let instructions;
+            
+            if (currentMode === 'text') {
+                instructions = '<strong>Text Mode:</strong> Click on the PDF to add text variables at specific positions.';
+            } else if (currentMode === 'image') {
+                instructions = '<strong>Image Mode:</strong> First upload images, then click on the PDF to place them at specific positions.';
+            } else if (currentMode === 'shape') {
+                if (lineDrawingState === 'waiting_for_start') {
+                    instructions = '<strong>Shape Mode - Line Drawing:</strong> <span style="color: #ff4444;">●</span> Click to set the START point of the line.';
+                } else if (lineDrawingState === 'waiting_for_end') {
+                    instructions = '<strong>Shape Mode - Line Drawing:</strong> <span style="color: #44ff44;">●</span> Click to set the END point of the line.';
+                } else {
+                    instructions = '<strong>Shape Mode:</strong> Click on the PDF to add shapes (rectangles, circles, lines) at specific positions.';
+                }
+            }
+            
+            modeInstructions.innerHTML = instructions;
+            
+            // Show/hide line drawing controls
+            if (lineDrawingState) {
+                lineDrawingControls.style.display = 'block';
+            } else {
+                lineDrawingControls.style.display = 'none';
+            }
+        }
+
+        function cancelLineDrawing() {
+            lineDrawingState = null;
+            tempLineStart = null;
+            removeTemporaryLinePoints();
+            updateModeInstructions();
+            showNotification('Line drawing cancelled.', 'success');
+        }
 
         // Utility functions
         function showNotification(message, type = 'success') {
@@ -608,6 +867,98 @@
             }
         }
 
+        // Session management for consistency
+        function ensureSessionConsistency() {
+            // This helps maintain the same session across page reloads
+            const sessionCookie = document.cookie.split(';').find(c => c.trim().startsWith('session='));
+            if (sessionCookie) {
+                console.log('Session cookie found:', sessionCookie);
+            } else {
+                console.log('No session cookie found - new session will be created');
+            }
+        }
+
+        // Initialize session consistency
+        ensureSessionConsistency();
+
+        // Image handling
+        async function handleImageUpload(e) {
+            const files = Array.from(e.target.files);
+            
+            for (const file of files) {
+                if (file.size > 10 * 1024 * 1024) {
+                    showNotification(`Image ${file.name} too large. Maximum size is 10MB.`, 'error');
+                    continue;
+                }
+                
+                const formData = new FormData();
+                formData.append('image', file);
+                
+                try {
+                    const response = await fetch('/api/upload-image', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showNotification(`Image ${result.filename} uploaded successfully!`);
+                        await loadUploadedImages();
+                    } else {
+                        showNotification(result.error, 'error');
+                    }
+                } catch (error) {
+                    showNotification('Image upload failed: ' + error.message, 'error');
+                }
+            }
+        }
+
+        async function refreshImageList() {
+            try {
+                console.log('Refreshing image list...');
+                const response = await fetch('/api/images');
+                const result = await response.json();
+                
+                if (result.success) {
+                    uploadedImages = result.images;
+                    updateImageList();
+                    console.log(`Loaded ${uploadedImages.length} images:`, uploadedImages);
+                    
+                    // Update sample data if it's empty or default
+                    const currentData = sampleData.value.trim();
+                    if (!currentData || currentData === '{}') {
+                        initializeSampleData();
+                    }
+                } else {
+                    console.error('Failed to load images:', result.error);
+                }
+            } catch (error) {
+                console.error('Error refreshing image list:', error);
+            }
+        }
+
+        async function loadUploadedImages() {
+            await refreshImageList();
+        }
+
+        function updateImageList() {
+            if (uploadedImages.length === 0) {
+                imageList.innerHTML = '<div>No images uploaded yet</div>';
+                return;
+            }
+            
+            imageList.innerHTML = uploadedImages.map(img => 
+                `<div class="image-item-small">
+                    <span>📷 ${img.filename}</span>
+                    <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                        <small>${new Date(img.upload_time).toLocaleDateString()}</small>
+                        <small style="color: #007bff; font-size: 0.7rem;">URL: ${window.location.origin}${img.url}</small>
+                    </div>
+                </div>`
+            ).join('');
+        }
+
         // PDF upload and processing
         async function uploadPDF(file) {
             if (file.size > 16 * 1024 * 1024) {
@@ -631,6 +982,7 @@
                 if (result.success) {
                     showNotification(result.message);
                     await loadPDFForPreview(file);
+                    await loadUploadedImages();
                     pdfUploaded = true;
                     processBtn.disabled = false;
                 } else {
@@ -660,7 +1012,9 @@
                 await renderPage(currentPage);
                 updatePageInfo();
                 variables = [];
-                updateVariablesList();
+                images = [];
+                shapes = [];
+                updateAllLists();
                 updateConfiguration();
             } catch (error) {
                 showNotification('Error loading PDF preview: ' + error.message, 'error');
@@ -673,7 +1027,6 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    // Store page dimensions for coordinate conversion
                     result.pages.forEach(page => {
                         pdfPageDimensions[page.page] = {
                             width: page.width,
@@ -682,14 +1035,12 @@
                     });
                 } else {
                     console.warn('Could not get PDF dimensions:', result.error);
-                    // Use default dimensions if we can't get actual ones
                     for (let i = 1; i <= totalPages; i++) {
-                        pdfPageDimensions[i] = { width: 612, height: 792 }; // US Letter
+                        pdfPageDimensions[i] = { width: 612, height: 792 };
                     }
                 }
             } catch (error) {
                 console.warn('Error getting PDF dimensions:', error);
-                // Use default dimensions
                 for (let i = 1; i <= totalPages; i++) {
                     pdfPageDimensions[i] = { width: 612, height: 792 };
                 }
@@ -703,10 +1054,6 @@
                 
                 pdfCanvas.width = viewport.width;
                 pdfCanvas.height = viewport.height;
-                
-                // Store the actual viewport dimensions for accurate coordinate conversion
-                const actualPageDim = pdfPageDimensions[pageNum] || { width: 612, height: 792 };
-                console.log(`Page ${pageNum}: Canvas ${viewport.width}x${viewport.height}, PDF ${actualPageDim.width}x${actualPageDim.height}`);
 
                 const renderContext = {
                     canvasContext: pdfCtx,
@@ -714,31 +1061,28 @@
                 };
                 
                 await page.render(renderContext).promise;
-                renderTextOverlays();
+                renderAllOverlays();
             } catch (error) {
                 console.error('Error rendering page:', error);
             }
         }
 
-        function renderTextOverlays() {
+        function renderAllOverlays() {
             // Remove existing overlays and dots
-            const existingOverlays = pdfViewer.querySelectorAll('.text-overlay, .coordinate-dot');
+            const existingOverlays = pdfViewer.querySelectorAll('.text-overlay, .image-overlay, .shape-overlay, .coordinate-dot');
             existingOverlays.forEach(element => element.remove());
 
+            // Render text variables
             const currentPageVars = variables.filter(v => v.page === currentPage);
             currentPageVars.forEach(variable => {
                 if (variable.type === 'simple') {
-                    // Use display coordinates for visual overlay (exact click position)
                     let canvasCoords;
                     if (variable.displayX && variable.displayY) {
-                        // Use stored display coordinates
                         canvasCoords = pdfToCanvasCoordinates(variable.displayX, variable.displayY, currentPage, true);
                     } else {
-                        // Fallback for old variables - reverse the adjustment
                         canvasCoords = pdfToCanvasCoordinates(variable.x, variable.y, currentPage, false);
                     }
 
-                    // Create text overlay at exact click position
                     const overlay = document.createElement('div');
                     overlay.className = 'text-overlay';
                     overlay.textContent = `${variable.name} (${variable.x}, ${variable.y})`;
@@ -746,7 +1090,6 @@
                     overlay.style.top = canvasCoords.y + 'px';
                     pdfViewer.appendChild(overlay);
 
-                    // Create precision dot at exact click position
                     const dot = document.createElement('div');
                     dot.className = 'coordinate-dot simple';
                     dot.style.left = canvasCoords.x + 'px';
@@ -754,7 +1097,6 @@
                     pdfViewer.appendChild(dot);
 
                 } else if (variable.type === 'conditional') {
-                    // Render conditional coordinate overlays
                     variable.conditionalCoordinates.forEach((cond, index) => {
                         let canvasCoords;
                         if (cond.displayX && cond.displayY) {
@@ -763,16 +1105,14 @@
                             canvasCoords = pdfToCanvasCoordinates(cond.x, cond.y, currentPage, false);
                         }
 
-                        // Create text overlay
                         const overlay = document.createElement('div');
                         overlay.className = 'text-overlay';
-                        overlay.style.background = 'rgba(255, 152, 0, 0.8)'; // Orange for conditional
+                        overlay.style.background = 'rgba(255, 152, 0, 0.8)';
                         overlay.textContent = `${variable.name}[${cond.if_value || '?'}] (${cond.x}, ${cond.y})`;
                         overlay.style.left = canvasCoords.x + 'px';
                         overlay.style.top = canvasCoords.y + 'px';
                         pdfViewer.appendChild(overlay);
 
-                        // Create precision dot
                         const dot = document.createElement('div');
                         dot.className = 'coordinate-dot conditional';
                         dot.style.left = canvasCoords.x + 'px';
@@ -780,6 +1120,44 @@
                         pdfViewer.appendChild(dot);
                     });
                 }
+            });
+
+            // Render images
+            const currentPageImages = images.filter(img => img.page === currentPage);
+            currentPageImages.forEach(image => {
+                const canvasCoords = pdfToCanvasCoordinates(image.x, image.y, currentPage, false);
+
+                const overlay = document.createElement('div');
+                overlay.className = 'image-overlay';
+                overlay.textContent = `🖼️ ${image.name} (${image.width}x${image.height})`;
+                overlay.style.left = canvasCoords.x + 'px';
+                overlay.style.top = canvasCoords.y + 'px';
+                pdfViewer.appendChild(overlay);
+
+                const dot = document.createElement('div');
+                dot.className = 'coordinate-dot image';
+                dot.style.left = canvasCoords.x + 'px';
+                dot.style.top = canvasCoords.y + 'px';
+                pdfViewer.appendChild(dot);
+            });
+
+            // Render shapes
+            const currentPageShapes = shapes.filter(shape => shape.page === currentPage);
+            currentPageShapes.forEach(shape => {
+                const canvasCoords = pdfToCanvasCoordinates(shape.x, shape.y, currentPage, false);
+
+                const overlay = document.createElement('div');
+                overlay.className = 'shape-overlay';
+                overlay.textContent = `${shape.type} (${shape.width}x${shape.height})`;
+                overlay.style.left = canvasCoords.x + 'px';
+                overlay.style.top = canvasCoords.y + 'px';
+                pdfViewer.appendChild(overlay);
+
+                const dot = document.createElement('div');
+                dot.className = 'coordinate-dot shape';
+                dot.style.left = canvasCoords.x + 'px';
+                dot.style.top = canvasCoords.y + 'px';
+                pdfViewer.appendChild(dot);
             });
         }
 
@@ -789,7 +1167,11 @@
                 currentPage = newPage;
                 renderPage(currentPage);
                 updatePageInfo();
-                renderTextOverlays();
+                
+                // Clear line drawing state when changing pages
+                if (lineDrawingState) {
+                    cancelLineDrawing();
+                }
             }
         }
 
@@ -804,19 +1186,295 @@
             const canvasX = Math.round(e.clientX - rect.left);
             const canvasY = Math.round(e.clientY - rect.top);
             
-            // Check if Ctrl/Cmd is held down for adding conditional coordinates
-            if (e.ctrlKey || e.metaKey) {
-                // Get adjusted coordinates for conditional coordinates
-                const pdfCoords = canvasToPDFCoordinates(canvasX, canvasY, currentPage, false);
-                addConditionalCoordinateByClick(pdfCoords.x, pdfCoords.y);
-            } else {
-                // For regular variables, addVariableAtPosition will handle both display and process coords
-                addVariableAtPosition(0, 0, currentPage); // Parameters not used anymore
+            if (currentMode === 'text') {
+                if (e.ctrlKey || e.metaKey) {
+                    const pdfCoords = canvasToPDFCoordinates(canvasX, canvasY, currentPage, false);
+                    addConditionalCoordinateByClick(pdfCoords.x, pdfCoords.y);
+                } else {
+                    addVariableAtPosition(canvasX, canvasY, currentPage);
+                }
+            } else if (currentMode === 'image') {
+                addImageAtPosition(canvasX, canvasY, currentPage);
+            } else if (currentMode === 'shape') {
+                handleShapeClick(canvasX, canvasY, currentPage);
             }
         }
 
+        function handleShapeClick(canvasX, canvasY, page) {
+            if (lineDrawingState === 'waiting_for_start') {
+                // First click for line - set start point
+                const pdfCoords = canvasToPDFCoordinates(canvasX, canvasY, page, false);
+                tempLineStart = {
+                    x: pdfCoords.x || 0,
+                    y: pdfCoords.y || 0,
+                    canvasX: canvasX,
+                    canvasY: canvasY
+                };
+                lineDrawingState = 'waiting_for_end';
+                
+                // Show temporary start point indicator
+                showTemporaryLinePoint(canvasX, canvasY, 'start');
+                updateModeInstructions();
+                showNotification('Line start point set. Click again to set end point.', 'success');
+                
+            } else if (lineDrawingState === 'waiting_for_end') {
+                // Second click for line - set end point and create line
+                const pdfCoords = canvasToPDFCoordinates(canvasX, canvasY, page, false);
+                
+                const shape = {
+                    type: 'line',
+                    x: tempLineStart.x,
+                    y: tempLineStart.y,
+                    page: page,
+                    width: 50,
+                    height: 50,
+                    color: '#000000',
+                    fill: false,
+                    stroke_width: 2,
+                    radius: 25,
+                    end_x: pdfCoords.x || 0,
+                    end_y: pdfCoords.y || 0
+                };
+
+                shapes.push(shape);
+                updateShapesList();
+                updateConfiguration();
+                renderAllOverlays();
+                
+                // Reset line drawing state
+                lineDrawingState = null;
+                tempLineStart = null;
+                removeTemporaryLinePoints();
+                updateModeInstructions();
+                showNotification('Line created successfully!', 'success');
+                
+            } else {
+                // Regular shape drawing (rectangle/circle) or start line drawing
+                const shapeType = prompt('Select shape type:\n1. Rectangle\n2. Circle\n3. Line (two-point)');
+                let type;
+                
+                switch(shapeType) {
+                    case '1': type = 'rectangle'; break;
+                    case '2': type = 'circle'; break;
+                    case '3': 
+                        type = 'line';
+                        lineDrawingState = 'waiting_for_start';
+                        updateModeInstructions();
+                        showNotification('Click on the PDF to set line start point.', 'success');
+                        return; // Don't create shape yet, wait for two clicks
+                    default: return;
+                }
+
+                const pdfCoords = canvasToPDFCoordinates(canvasX, canvasY, page, false);
+                
+                const shape = {
+                    type: type,
+                    x: pdfCoords.x || 0,
+                    y: pdfCoords.y || 0,
+                    page: page,
+                    width: 50,
+                    height: 50,
+                    color: '#000000',
+                    fill: false,
+                    stroke_width: 1,
+                    radius: 25,
+                    end_x: (pdfCoords.x || 0) + 50,
+                    end_y: pdfCoords.y || 0
+                };
+
+                shapes.push(shape);
+                updateShapesList();
+                updateConfiguration();
+                renderAllOverlays();
+            }
+        }
+
+        function showTemporaryLinePoint(canvasX, canvasY, pointType) {
+            // Remove any existing temporary points
+            removeTemporaryLinePoints();
+            
+            // Create temporary point indicator
+            const tempPoint = document.createElement('div');
+            tempPoint.className = 'temp-line-point';
+            tempPoint.id = `temp-${pointType}-point`;
+            tempPoint.style.position = 'absolute';
+            tempPoint.style.left = canvasX + 'px';
+            tempPoint.style.top = canvasY + 'px';
+            tempPoint.style.width = '12px';
+            tempPoint.style.height = '12px';
+            tempPoint.style.borderRadius = '50%';
+            tempPoint.style.background = pointType === 'start' ? '#ff4444' : '#44ff44';
+            tempPoint.style.border = '2px solid white';
+            tempPoint.style.transform = 'translate(-50%, -50%)';
+            tempPoint.style.zIndex = '1001';
+            tempPoint.style.pointerEvents = 'none';
+            tempPoint.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+            
+            // Add text label
+            const label = document.createElement('div');
+            label.style.position = 'absolute';
+            label.style.top = '-25px';
+            label.style.left = '50%';
+            label.style.transform = 'translateX(-50%)';
+            label.style.background = 'rgba(0,0,0,0.8)';
+            label.style.color = 'white';
+            label.style.padding = '2px 6px';
+            label.style.borderRadius = '3px';
+            label.style.fontSize = '10px';
+            label.style.whiteSpace = 'nowrap';
+            label.textContent = pointType === 'start' ? 'START' : 'END';
+            tempPoint.appendChild(label);
+            
+            pdfViewer.appendChild(tempPoint);
+        }
+
+        function removeTemporaryLinePoints() {
+            const tempPoints = pdfViewer.querySelectorAll('.temp-line-point');
+            tempPoints.forEach(point => point.remove());
+        }
+
+        function addImageAtPosition(canvasX, canvasY, page) {
+            if (uploadedImages.length === 0) {
+                showNotification('Please upload images first', 'error');
+                return;
+            }
+
+            let selectedImage;
+            if (uploadedImages.length === 1) {
+                selectedImage = uploadedImages[0];
+            } else {
+                const imageNames = uploadedImages.map((img, i) => `${i + 1}. ${img.filename}`).join('\n');
+                const choice = prompt(`Select an image:\n${imageNames}`);
+                const choiceIndex = parseInt(choice) - 1;
+                
+                if (choiceIndex >= 0 && choiceIndex < uploadedImages.length) {
+                    selectedImage = uploadedImages[choiceIndex];
+                } else {
+                    return;
+                }
+            }
+
+            // Prompt for variable name (this will be used to reference the image URL in sample data)
+            const imageName = prompt('Enter variable name for this image (e.g., "logo", "signature"):', `image_${images.length + 1}`);
+            if (!imageName) return;
+
+            const pdfCoords = canvasToPDFCoordinates(canvasX, canvasY, page, false);
+            
+            const image = {
+                name: imageName,
+                filename: selectedImage.filename,
+                x: pdfCoords.x,
+                y: pdfCoords.y,
+                page: page,
+                width: 100,
+                height: 100
+            };
+
+            images.push(image);
+            updateImagesList();
+            updateConfiguration();
+            renderAllOverlays();
+            showNotification(`Added image variable "${imageName}". Add the image URL to sample data with key "${imageName}".`);
+        }
+
+        function addShapeAtPosition(canvasX, canvasY, page) {
+            const shapeType = prompt('Select shape type:\n1. Rectangle\n2. Circle\n3. Line');
+            let type;
+            
+            switch(shapeType) {
+                case '1': type = 'rectangle'; break;
+                case '2': type = 'circle'; break;
+                case '3': type = 'line'; break;
+                default: return;
+            }
+
+            const pdfCoords = canvasToPDFCoordinates(canvasX, canvasY, page, false);
+            
+            const shape = {
+                type: type,
+                x: pdfCoords.x || 0,
+                y: pdfCoords.y || 0,
+                page: page,
+                width: 50,
+                height: 50,
+                color: '#000000',
+                fill: false,
+                stroke_width: 1,
+                radius: 25,
+                end_x: (pdfCoords.x || 0) + 50,
+                end_y: pdfCoords.y || 0
+            };
+
+            shapes.push(shape);
+            updateShapesList();
+            updateConfiguration();
+            renderAllOverlays();
+        }
+
+        function canvasToPDFCoordinates(canvasX, canvasY, pageNum, forDisplay = false) {
+            const pdfPageDim = pdfPageDimensions[pageNum] || { width: 612, height: 792 };
+            
+            const scaleX = pdfPageDim.width / pdfCanvas.width;
+            const scaleY = pdfPageDim.height / pdfCanvas.height;
+            
+            const pdfX = Math.round(canvasX * scaleX);
+            const pdfY = Math.round(pdfPageDim.height - (canvasY * scaleY));
+            
+            if (forDisplay) {
+                return { x: pdfX, y: pdfY };
+            } else {
+                const adjustedPdfX = pdfX - 3;
+                const adjustedPdfY = pdfY - 6;
+                return { x: adjustedPdfX, y: adjustedPdfY };
+            }
+        }
+
+        function pdfToCanvasCoordinates(pdfX, pdfY, pageNum, isDisplayCoords = false) {
+            const pdfPageDim = pdfPageDimensions[pageNum] || { width: 612, height: 792 };
+            
+            const scaleX = pdfCanvas.width / pdfPageDim.width;
+            const scaleY = pdfCanvas.height / pdfPageDim.height;
+
+            let displayPdfX, displayPdfY;
+
+            if (isDisplayCoords) {
+                displayPdfX = pdfX + 89;
+                displayPdfY = pdfY - 89;
+            } else {
+                displayPdfX = pdfX - 2;
+                displayPdfY = pdfY - 2;
+            }
+
+            const canvasX = Math.round(displayPdfX * scaleX);
+            const canvasY = Math.round((pdfPageDim.height - displayPdfY) * scaleY);
+
+            return { x: canvasX, y: canvasY };
+        }
+
+        function addVariableAtPosition(canvasX, canvasY, page) {
+            const displayCoords = canvasToPDFCoordinates(canvasX, canvasY, page, true);
+            const processCoords = canvasToPDFCoordinates(canvasX, canvasY, page, false);
+
+            const variableName = `var_${variables.length + 1}`;
+            const variable = {
+                name: variableName,
+                x: processCoords.x,
+                y: processCoords.y,
+                displayX: displayCoords.x,
+                displayY: displayCoords.y,
+                page: page,
+                fontSize: 12,
+                type: 'simple',
+                conditionalCoordinates: []
+            };
+
+            variables.push(variable);
+            updateVariablesList();
+            updateConfiguration();
+            renderAllOverlays();
+        }
+
         function addConditionalCoordinateByClick(x, y) {
-            // Find conditional variables on the current page
             const conditionalVars = variables.filter(v => v.type === 'conditional' && v.page === currentPage);
 
             if (conditionalVars.length === 0) {
@@ -825,17 +1483,14 @@
             }
 
             if (conditionalVars.length === 1) {
-                // Automatically add to the only conditional variable
                 const varIndex = variables.indexOf(conditionalVars[0]);
                 addConditionalCoordinate(varIndex);
-                // Update the last added coordinate with clicked position
                 const lastCondIndex = variables[varIndex].conditionalCoordinates.length - 1;
                 updateConditionalCoordinate(varIndex, lastCondIndex, 'x', x);
                 updateConditionalCoordinate(varIndex, lastCondIndex, 'y', y);
                 updateVariablesList();
                 showNotification(`Added conditional coordinate to "${conditionalVars[0].name}"`);
             } else {
-                // Multiple conditional variables - let user choose
                 const varNames = conditionalVars.map((v, i) => `${i + 1}. ${v.name}`).join('\n');
                 const choice = prompt(`Multiple conditional variables found. Enter the number for:\n${varNames}`);
                 const choiceIndex = parseInt(choice) - 1;
@@ -852,166 +1507,7 @@
             }
         }
 
-        function canvasToPDFCoordinates(canvasX, canvasY, pageNum, forDisplay = false) {
-            // Get actual PDF page dimensions
-            const pdfPageDim = pdfPageDimensions[pageNum] || { width: 612, height: 792 };
-            
-            // Calculate the scale factors between canvas and PDF
-            const scaleX = pdfPageDim.width / pdfCanvas.width;
-            const scaleY = pdfPageDim.height / pdfCanvas.height;
-            
-            // Convert canvas coordinates to PDF coordinates
-            const pdfX = Math.round(canvasX * scaleX);
-            // PDF coordinate system has origin at bottom-left, canvas at top-left
-            const pdfY = Math.round(pdfPageDim.height - (canvasY * scaleY));
-            
-            if (forDisplay) {
-                // Return exact coordinates for visual display (no adjustment)
-                return { x: pdfX, y: pdfY };
-            } else {
-                // Apply adjustment for actual PDF text positioning
-                const adjustedPdfX = pdfX - 3; // Slight left adjustment for horizontal center
-                const adjustedPdfY = pdfY - 6; // SUBTRACT to move DOWN (lower Y value in PDF = lower position)
-
-                console.log(`Canvas: (${canvasX}, ${canvasY}) -> PDF Display: (${pdfX}, ${pdfY}) -> PDF Final: (${adjustedPdfX}, ${adjustedPdfY})`);
-                console.log(`Canvas size: ${pdfCanvas.width}x${pdfCanvas.height}, PDF size: ${pdfPageDim.width}x${pdfPageDim.height}`);
-                console.log(`Scale factors: X=${scaleX.toFixed(3)}, Y=${scaleY.toFixed(3)}`);
-
-                return { x: adjustedPdfX, y: adjustedPdfY };
-            }
-        }
-
-        function pdfToCanvasCoordinates(pdfX, pdfY, pageNum, isDisplayCoords = false) {
-            // Convert PDF coordinates back to canvas coordinates for overlay display
-            const pdfPageDim = pdfPageDimensions[pageNum] || { width: 612, height: 792 };
-            
-            const scaleX = pdfCanvas.width / pdfPageDim.width;
-            const scaleY = pdfCanvas.height / pdfPageDim.height;
-
-            let displayPdfX, displayPdfY;
-
-            if (isDisplayCoords) {
-                // These are already display coordinates, no adjustment needed
-                displayPdfX = pdfX + 89;
-                displayPdfY = pdfY - 89;
-                console.log("display", displayPdfX, displayPdfY)
-            } else {
-                // These are adjusted coordinates, reverse the adjustment for display
-                displayPdfX = pdfX - 2; // Reverse the left adjustment
-                displayPdfY = pdfY - 2; // Reverse the down adjustment
-
-                console.log(displayPdfX, displayPdfY)
-            }
-
-            const canvasX = Math.round(displayPdfX * scaleX);
-            const canvasY = Math.round((pdfPageDim.height - displayPdfY) * scaleY);
-
-            return { x: canvasX, y: canvasY };
-        }
-
-        function addVariableAtPosition(x, y, page) {
-            const canvasRect = pdfCanvas.getBoundingClientRect();
-            const canvasX = Math.round(event.clientX - canvasRect.left);
-            const canvasY = Math.round(event.clientY - canvasRect.top);
-
-            // Get display coordinates (exact click position) for visual overlay
-            const displayCoords = canvasToPDFCoordinates(canvasX, canvasY, page, true);
-            // Get adjusted coordinates for actual PDF processing
-            const processCoords = canvasToPDFCoordinates(canvasX, canvasY, page, false);
-
-            const variableName = `var_${variables.length + 1}`;
-            const variable = {
-                name: variableName,
-                x: processCoords.x, // Adjusted coordinates for PDF processing
-                y: processCoords.y,
-                displayX: displayCoords.x, // Exact coordinates for visual display
-                displayY: displayCoords.y,
-                page: page,
-                fontSize: 12,
-                type: 'simple',
-                conditionalCoordinates: []
-            };
-
-            variables.push(variable);
-            updateVariablesList();
-            updateConfiguration();
-            renderTextOverlays();
-        }
-
-        function loadFromConfiguration() {
-            try {
-                const configText = configOutput.value || configOutput.textContent;
-                if (!configText || configText === 'Click on the PDF to start adding variables...') {
-                    showNotification('No configuration to load', 'error');
-                    return;
-                }
-
-                const config = JSON.parse(configText);
-                if (!Array.isArray(config)) {
-                    showNotification('Invalid configuration format - must be an array', 'error');
-                    return;
-                }
-
-                // Convert configuration back to variables
-                variables = [];
-                config.forEach(pageConfig => {
-                    const displayPage = pageConfig.page_number + 1; // Convert 0-based to 1-based for display
-
-                    if (!pageConfig.variables || !Array.isArray(pageConfig.variables)) {
-                        console.warn(`Page ${pageConfig.page_number} has no variables array`);
-                        return;
-                    }
-
-                    pageConfig.variables.forEach(variable => {
-                        if (variable.conditional_coordinates) {
-                            // Conditional variable
-                            const newVar = {
-                                name: variable.name,
-                                x: 0, // Not used for conditional
-                                y: 0, // Not used for conditional
-                                page: displayPage,
-                                fontSize: 12,
-                                type: 'conditional',
-                                conditionalCoordinates: variable.conditional_coordinates.map(cond => ({
-                                    if_value: cond.if_value || '',
-                                    print_pattern: cond.print_pattern || '*',
-                                    x: cond['x-coordinate'] || 0,
-                                    y: cond['y-coordinate'] || 0,
-                                    displayX: cond['x-coordinate'] || 0, // Use same coordinates for display
-                                    displayY: cond['y-coordinate'] || 0
-                                }))
-                            };
-                            variables.push(newVar);
-                        } else {
-                            // Simple variable
-                            const newVar = {
-                                name: variable.name,
-                                x: variable['x-coordinate'] || 0,
-                                y: variable['y-coordinate'] || 0,
-                                displayX: variable['x-coordinate'] || 0, // Use same coordinates for display
-                                displayY: variable['y-coordinate'] || 0,
-                                page: displayPage,
-                                fontSize: variable.font_size || 12,
-                                type: 'simple',
-                                conditionalCoordinates: []
-                            };
-                            variables.push(newVar);
-                        }
-                    });
-                });
-
-                updateVariablesList();
-                renderTextOverlays();
-                showNotification(`Configuration loaded successfully! ${variables.length} variables imported.`);
-
-            } catch (error) {
-                showNotification('Invalid JSON configuration: ' + error.message, 'error');
-                console.error('Config parsing error:', error);
-            }
-        }
-
         function addVariable() {
-            // Get center coordinates of current page in PDF coordinate system
             const pdfPageDim = pdfPageDimensions[currentPage] || { width: 612, height: 792 };
             const centerX = Math.round(pdfPageDim.width / 2);
             const centerY = Math.round(pdfPageDim.height / 2);
@@ -1027,16 +1523,30 @@
             };
 
             variables.push(variable);
-            updateVariablesList();
+            updateAllLists();
             updateConfiguration();
-            renderTextOverlays();
+            renderAllOverlays();
         }
 
         function removeVariable(index) {
             variables.splice(index, 1);
-            updateVariablesList();
+            updateAllLists();
             updateConfiguration();
-            renderTextOverlays();
+            renderAllOverlays();
+        }
+
+        function removeImage(index) {
+            images.splice(index, 1);
+            updateAllLists();
+            updateConfiguration();
+            renderAllOverlays();
+        }
+
+        function removeShape(index) {
+            shapes.splice(index, 1);
+            updateAllLists();
+            updateConfiguration();
+            renderAllOverlays();
         }
 
         function updateVariable(index, field, value) {
@@ -1047,7 +1557,6 @@
                     variables[index][field] = value;
                 }
 
-                // If switching to conditional type, initialize conditional coordinates
                 if (field === 'type' && value === 'conditional' && !variables[index].conditionalCoordinates.length) {
                     variables[index].conditionalCoordinates = [{
                         if_value: '',
@@ -1060,7 +1569,42 @@
                 updateVariablesList();
                 updateConfiguration();
                 if (field === 'x' || field === 'y' || field === 'page') {
-                    renderTextOverlays();
+                    renderAllOverlays();
+                }
+            }
+        }
+
+        function updateImage(index, field, value) {
+            if (images[index]) {
+                if (field === 'width' || field === 'height' || field === 'x' || field === 'y' || field === 'page') {
+                    images[index][field] = parseInt(value) || 0;
+                } else {
+                    images[index][field] = value;
+                }
+
+                updateImagesList();
+                updateConfiguration();
+                if (field === 'x' || field === 'y' || field === 'page') {
+                    renderAllOverlays();
+                }
+            }
+        }
+
+        function updateShape(index, field, value) {
+            if (shapes[index]) {
+                if (field === 'width' || field === 'height' || field === 'x' || field === 'y' || field === 'page' || 
+                    field === 'radius' || field === 'end_x' || field === 'end_y' || field === 'stroke_width') {
+                    shapes[index][field] = parseInt(value) || 0;
+                } else if (field === 'fill') {
+                    shapes[index][field] = value === 'true';
+                } else {
+                    shapes[index][field] = value;
+                }
+
+                updateShapesList();
+                updateConfiguration();
+                if (field === 'x' || field === 'y' || field === 'page' || field === 'end_x' || field === 'end_y') {
+                    renderAllOverlays();
                 }
             }
         }
@@ -1076,7 +1620,7 @@
                 });
                 updateVariablesList();
                 updateConfiguration();
-                renderTextOverlays();
+                renderAllOverlays();
             }
         }
 
@@ -1085,7 +1629,7 @@
                 variables[variableIndex].conditionalCoordinates.splice(condIndex, 1);
                 updateVariablesList();
                 updateConfiguration();
-                renderTextOverlays();
+                renderAllOverlays();
             }
         }
 
@@ -1098,9 +1642,15 @@
                 }
                 updateConfiguration();
                 if (field === 'x' || field === 'y') {
-                    renderTextOverlays();
+                    renderAllOverlays();
                 }
             }
+        }
+
+        function updateAllLists() {
+            updateVariablesList();
+            updateImagesList();
+            updateShapesList();
         }
 
         function updateVariablesList() {
@@ -1189,7 +1739,6 @@
                         <div class="coordinate-display">
                             Display Page: ${variable.page} → Config Page: ${variable.page - 1} (0-based)
                             <br>PDF Coords: X: ${variable.x} | Y: ${variable.y}
-                            <br><small style="color: #6c757d;">pdf_text_overlay uses 0-based page numbering</small>
                         </div>
                         <div class="form-group">
                             <label>Page Number:</label>
@@ -1221,22 +1770,222 @@
             });
         }
 
+        function updateImagesList() {
+            imagesList.innerHTML = '';
+
+            images.forEach((image, index) => {
+                const div = document.createElement('div');
+                div.className = 'image-item';
+
+                div.innerHTML = `
+                    <div class="image-header">
+                        <strong>🖼️ Image ${index + 1}</strong>
+                        <button class="remove-btn" onclick="removeImage(${index})">Remove</button>
+                    </div>
+                    <div class="coordinate-display">
+                        Variable Name: ${image.name}
+                        <br>Reference File: ${image.filename}
+                        <br>Page: ${image.page} | Position: (${image.x}, ${image.y})
+                        <br>Size: ${image.width} x ${image.height}
+                        <br><small>💡 Add "${image.name}" key with image URL to sample data</small>
+                        <br><small style="color: #007bff;">Uploaded URL: ${(() => {
+                            const uploadedImg = uploadedImages.find(img => img.filename === image.filename);
+                            return uploadedImg ? window.location.origin + uploadedImg.url : 'Not found';
+                        })()}</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Variable Name:</label>
+                        <input type="text" class="form-control" value="${image.name}" 
+                               placeholder="e.g., logo, signature"
+                               onchange="updateImage(${index}, 'name', this.value)">
+                    </div>
+                    <div class="form-group">
+                        <label>Reference Image File:</label>
+                        <select class="form-control" onchange="updateImage(${index}, 'filename', this.value)">
+                            ${uploadedImages.map(img => 
+                                `<option value="${img.filename}" ${img.filename === image.filename ? 'selected' : ''}>${img.filename}</option>`
+                            ).join('')}
+                        </select>
+                        <small style="color: #666; font-size: 0.8rem;">This is just for reference. Actual image comes from sample data URL.</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Page Number:</label>
+                        <input type="number" class="form-control" value="${image.page}" min="1" max="${totalPages || 999}"
+                               onchange="updateImage(${index}, 'page', this.value)">
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>X Coordinate:</label>
+                            <input type="number" class="form-control" value="${image.x}"
+                                   onchange="updateImage(${index}, 'x', this.value)">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Y Coordinate:</label>
+                            <input type="number" class="form-control" value="${image.y}"
+                                   onchange="updateImage(${index}, 'y', this.value)">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Width:</label>
+                            <input type="number" class="form-control" value="${image.width}" min="10"
+                                   onchange="updateImage(${index}, 'width', this.value)">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Height:</label>
+                            <input type="number" class="form-control" value="${image.height}" min="10"
+                                   onchange="updateImage(${index}, 'height', this.value)">
+                        </div>
+                    </div>
+                `;
+                imagesList.appendChild(div);
+            });
+
+            if (images.length === 0) {
+                imagesList.innerHTML = '<div style="text-align: center; color: #666;">No image overlays added yet. Switch to Image mode and click on the PDF to add images.</div>';
+            }
+        }
+
+        function updateShapesList() {
+            shapesList.innerHTML = '';
+
+            shapes.forEach((shape, index) => {
+                const div = document.createElement('div');
+                div.className = 'shape-item';
+
+                let shapeSpecificFields = '';
+                if (shape.type === 'circle') {
+                    shapeSpecificFields = `
+                        <div class="form-group">
+                            <label>Radius:</label>
+                            <input type="number" class="form-control" value="${shape.radius || 25}" min="5"
+                                   onchange="updateShape(${index}, 'radius', this.value)">
+                        </div>
+                    `;
+                } else if (shape.type === 'line') {
+                    shapeSpecificFields = `
+                        <div style="display: flex; gap: 10px;">
+                            <div class="form-group" style="flex: 1;">
+                                <label>End X:</label>
+                                <input type="number" class="form-control" value="${shape.end_x || shape.x + 50}"
+                                       onchange="updateShape(${index}, 'end_x', this.value)">
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label>End Y:</label>
+                                <input type="number" class="form-control" value="${shape.end_y || shape.y}"
+                                       onchange="updateShape(${index}, 'end_y', this.value)">
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    shapeSpecificFields = `
+                        <div style="display: flex; gap: 10px;">
+                            <div class="form-group" style="flex: 1;">
+                                <label>Width:</label>
+                                <input type="number" class="form-control" value="${shape.width}" min="5"
+                                       onchange="updateShape(${index}, 'width', this.value)">
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label>Height:</label>
+                                <input type="number" class="form-control" value="${shape.height}" min="5"
+                                       onchange="updateShape(${index}, 'height', this.value)">
+                            </div>
+                        </div>
+                    `;
+                }
+
+                div.innerHTML = `
+                    <div class="shape-header">
+                        <strong>🔲 ${shape.type} ${index + 1}</strong>
+                        <button class="remove-btn" onclick="removeShape(${index})">Remove</button>
+                    </div>
+                    <div class="coordinate-display">
+                        Type: ${shape.type} | Page: ${shape.page}
+                        <br>Position: (${shape.x}, ${shape.y}) PDF | (${(shape.x/72).toFixed(2)}", ${(shape.y/72).toFixed(2)}") inches
+                        <br>Color: ${shape.color} | Fill: ${shape.fill ? 'Yes' : 'No'}
+                        ${shape.type === 'line' ? `<br>End: (${shape.end_x}, ${shape.end_y}) PDF | (${(shape.end_x/72).toFixed(2)}", ${(shape.end_y/72).toFixed(2)}") inches` : ''}
+                        ${shape.type === 'line' ? `<br>Length: ${Math.sqrt(Math.pow(shape.end_x - shape.x, 2) + Math.pow(shape.end_y - shape.y, 2)).toFixed(1)} points` : ''}
+                    </div>
+                    <div class="form-group">
+                        <label>Shape Type:</label>
+                        <select class="form-control" onchange="updateShape(${index}, 'type', this.value)">
+                            <option value="rectangle" ${shape.type === 'rectangle' ? 'selected' : ''}>Rectangle</option>
+                            <option value="circle" ${shape.type === 'circle' ? 'selected' : ''}>Circle</option>
+                            <option value="line" ${shape.type === 'line' ? 'selected' : ''}>Line</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Page Number:</label>
+                        <input type="number" class="form-control" value="${shape.page}" min="1" max="${totalPages || 999}"
+                               onchange="updateShape(${index}, 'page', this.value)">
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>${shape.type === 'line' ? 'Start X' : 'X Coordinate'}:</label>
+                            <input type="number" class="form-control" value="${shape.x}"
+                                   onchange="updateShape(${index}, 'x', this.value)">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>${shape.type === 'line' ? 'Start Y' : 'Y Coordinate'}:</label>
+                            <input type="number" class="form-control" value="${shape.y}"
+                                   onchange="updateShape(${index}, 'y', this.value)">
+                        </div>
+                    </div>
+                    ${shapeSpecificFields}
+                    <div style="display: flex; gap: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Color:</label>
+                            <input type="color" class="form-control" value="${shape.color}" style="height: 40px;"
+                                   onchange="updateShape(${index}, 'color', this.value)">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Stroke Width:</label>
+                            <input type="number" class="form-control" value="${shape.stroke_width}" min="1" max="10"
+                                   onchange="updateShape(${index}, 'stroke_width', this.value)">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Fill Shape:</label>
+                        <select class="form-control" onchange="updateShape(${index}, 'fill', this.value)" ${shape.type === 'line' ? 'disabled' : ''}>
+                            <option value="false" ${!shape.fill ? 'selected' : ''}>No (Outline only)</option>
+                            <option value="true" ${shape.fill ? 'selected' : ''}>Yes (Filled)</option>
+                        </select>
+                        ${shape.type === 'line' ? '<small style="color: #666;">Lines cannot be filled</small>' : ''}
+                    </div>
+                    ${shape.type === 'line' ? `
+                        <div style="margin-top: 15px; padding: 10px; background: #e3f2fd; border-radius: 5px;">
+                            <small><strong>💡 Line Tips:</strong> 
+                            <br>• Use "Shape Mode" and select "Line (two-point)" for interactive drawing
+                            <br>• Click twice on PDF: first for start point, second for end point
+                            <br>• Manually adjust coordinates above for precise positioning</small>
+                        </div>
+                    ` : ''}
+                `;
+                shapesList.appendChild(div);
+            });
+
+            if (shapes.length === 0) {
+                shapesList.innerHTML = '<div style="text-align: center; color: #666;">No shape overlays added yet. Switch to Shape mode and click on the PDF to add shapes.</div>';
+            }
+        }
+
         function updateConfiguration() {
-            if (variables.length === 0) {
-                configOutput.textContent = 'Click on the PDF to start adding variables...';
+            if (variables.length === 0 && images.length === 0 && shapes.length === 0) {
+                configOutput.textContent = 'Click on the PDF to start adding elements...';
                 return;
             }
 
             const pageGroups = {};
+            
+            // Group variables by page
             variables.forEach(variable => {
-                // Convert 1-based display page to 0-based page for pdf_text_overlay
                 const zeroBasedPage = variable.page - 1;
                 if (!pageGroups[zeroBasedPage]) {
-                    pageGroups[zeroBasedPage] = [];
+                    pageGroups[zeroBasedPage] = { variables: [], images: [] };
                 }
 
                 if (variable.type === 'simple') {
-                    pageGroups[zeroBasedPage].push({
+                    pageGroups[zeroBasedPage].variables.push({
                         name: variable.name,
                         "x-coordinate": variable.x,
                         "y-coordinate": variable.y,
@@ -1252,20 +2001,205 @@
                             "y-coordinate": cond.y
                         }))
                     };
-                    pageGroups[zeroBasedPage].push(conditionalVar);
+                    pageGroups[zeroBasedPage].variables.push(conditionalVar);
                 }
             });
 
+            // Group images by page (convert to image variables)
+            images.forEach(image => {
+                const zeroBasedPage = image.page - 1;
+                if (!pageGroups[zeroBasedPage]) {
+                    pageGroups[zeroBasedPage] = { variables: [], images: [] };
+                }
+
+                pageGroups[zeroBasedPage].variables.push({
+                    name: image.name,
+                    image: {
+                        "x-coordinate": image.x,
+                        "y-coordinate": image.y,
+                        width: image.width,
+                        height: image.height
+                    }
+                });
+            });
+
+            // Group shapes by page (convert to draw_shape variables)
+            shapes.forEach(shape => {
+                const zeroBasedPage = shape.page - 1;
+                if (!pageGroups[zeroBasedPage]) {
+                    pageGroups[zeroBasedPage] = { variables: [], images: [], shapes: [] };
+                }
+
+                // Convert RGB hex color to individual components
+                const colorHex = shape.color.replace('#', '');
+                const r = parseInt(colorHex.substring(0, 2), 16) / 255.0;
+                const g = parseInt(colorHex.substring(2, 4), 16) / 255.0;
+                const b = parseInt(colorHex.substring(4, 6), 16) / 255.0;
+
+                // Convert PDF coordinates to inches (assuming 72 DPI)
+                const x0_inches = shape.x / 72.0;
+                const y0_inches = shape.y / 72.0;
+
+                const shapeConfig = {
+                    name: 'draw_shape',
+                    draw_shape: {
+                        r: parseFloat(r.toFixed(3)),
+                        g: parseFloat(g.toFixed(3)),
+                        b: parseFloat(b.toFixed(3)),
+                        shape: shape.type.charAt(0).toUpperCase() + shape.type.slice(1),
+                        'x0-coordinate': parseFloat(x0_inches.toFixed(3) - 0.95),
+                        'y0-coordinate': parseFloat(y0_inches.toFixed(3) - 0.95)
+                    }
+                };
+
+                // Add shape-specific coordinates
+                if (shape.type === 'rectangle') {
+                    shapeConfig.draw_shape['x1-coordinate'] = parseFloat(((shape.x + shape.width) / 72.0).toFixed(3));
+                    shapeConfig.draw_shape['y1-coordinate'] = parseFloat(((shape.y + shape.height) / 72.0).toFixed(3));
+                } else if (shape.type === 'circle') {
+                    const radiusInches = shape.radius / 72.0;
+                    shapeConfig.draw_shape['x1-coordinate'] = parseFloat((x0_inches + radiusInches).toFixed(3));
+                    shapeConfig.draw_shape['y1-coordinate'] = parseFloat((y0_inches + radiusInches).toFixed(3));
+                } else if (shape.type === 'line') {
+                    shapeConfig.draw_shape['x1-coordinate'] = parseFloat((shape.end_x / 72.0).toFixed(3) - 0.95);
+                    shapeConfig.draw_shape['y1-coordinate'] = parseFloat((shape.end_y / 72.0).toFixed(3) - 0.95);
+                }
+
+                pageGroups[zeroBasedPage].variables.push(shapeConfig);
+            });
+
             const configuration = Object.keys(pageGroups).map(page => ({
-                page_number: parseInt(page), // This will be 0-based
-                variables: pageGroups[page]
+                page_number: parseInt(page),
+                variables: pageGroups[page].variables
             }));
 
             configOutput.textContent = JSON.stringify(configuration, null, 2);
         }
 
+        function loadFromConfiguration() {
+            try {
+                const configText = configOutput.value || configOutput.textContent;
+                if (!configText || configText === 'Click on the PDF to start adding elements...') {
+                    showNotification('No configuration to load', 'error');
+                    return;
+                }
+
+                const config = JSON.parse(configText);
+                if (!Array.isArray(config)) {
+                    showNotification('Invalid configuration format - must be an array', 'error');
+                    return;
+                }
+
+                // Reset all arrays
+                variables = [];
+                images = [];
+                shapes = [];
+
+                config.forEach(pageConfig => {
+                    const displayPage = pageConfig.page_number + 1;
+
+                    // Load variables (including draw_shape variables)
+                    if (pageConfig.variables && Array.isArray(pageConfig.variables)) {
+                        pageConfig.variables.forEach(variable => {
+                            if (variable.name === 'draw_shape' && variable.draw_shape) {
+                                // Handle draw_shape variables
+                                const drawShape = variable.draw_shape;
+                                
+                                // Convert RGB values back to hex
+                                const r = Math.round((drawShape.r || 0) * 255);
+                                const g = Math.round((drawShape.g || 0) * 255);
+                                const b = Math.round((drawShape.b || 0) * 255);
+                                const colorHex = '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+                                
+                                // Convert inches back to PDF coordinates (72 DPI)
+                                const x0 = Math.round((drawShape['x0-coordinate'] || 0) * 72);
+                                const y0 = Math.round((drawShape['y0-coordinate'] || 0) * 72);
+                                const x1 = Math.round((drawShape['x1-coordinate'] || 0) * 72);
+                                const y1 = Math.round((drawShape['y1-coordinate'] || 0) * 72);
+                                
+                                const newShape = {
+                                    type: (drawShape.shape || 'rectangle').toLowerCase(),
+                                    x: x0,
+                                    y: y0,
+                                    page: displayPage,
+                                    color: colorHex,
+                                    fill: false,
+                                    stroke_width: 1
+                                };
+                                
+                                if (newShape.type === 'rectangle') {
+                                    newShape.width = Math.abs(x1 - x0);
+                                    newShape.height = Math.abs(y1 - y0);
+                                } else if (newShape.type === 'circle') {
+                                    newShape.radius = Math.abs(x1 - x0); // Using x difference as radius
+                                } else if (newShape.type === 'line') {
+                                    newShape.end_x = x1;
+                                    newShape.end_y = y1;
+                                }
+                                
+                                shapes.push(newShape);
+                            } else if (variable.conditional_coordinates) {
+                                // Handle conditional text variables
+                                const newVar = {
+                                    name: variable.name,
+                                    x: 0,
+                                    y: 0,
+                                    page: displayPage,
+                                    fontSize: 12,
+                                    type: 'conditional',
+                                    conditionalCoordinates: variable.conditional_coordinates.map(cond => ({
+                                        if_value: cond.if_value || '',
+                                        print_pattern: cond.print_pattern || '*',
+                                        x: cond['x-coordinate'] || 0,
+                                        y: cond['y-coordinate'] || 0,
+                                        displayX: cond['x-coordinate'] || 0,
+                                        displayY: cond['y-coordinate'] || 0
+                                    }))
+                                };
+                                variables.push(newVar);
+                            } else if (variable.image) {
+                                // Handle image variables
+                                const newImage = {
+                                    name: variable.name,
+                                    filename: 'placeholder.png', // Default filename since actual image comes from data
+                                    x: variable.image['x-coordinate'] || 0,
+                                    y: variable.image['y-coordinate'] || 0,
+                                    page: displayPage,
+                                    width: variable.image.width || 100,
+                                    height: variable.image.height || 100
+                                };
+                                images.push(newImage);
+                            } else {
+                                // Handle simple text variables
+                                const newVar = {
+                                    name: variable.name,
+                                    x: variable['x-coordinate'] || 0,
+                                    y: variable['y-coordinate'] || 0,
+                                    displayX: variable['x-coordinate'] || 0,
+                                    displayY: variable['y-coordinate'] || 0,
+                                    page: displayPage,
+                                    fontSize: variable.font_size || 12,
+                                    type: 'simple',
+                                    conditionalCoordinates: []
+                                };
+                                variables.push(newVar);
+                            }
+                        });
+                    }
+                });
+
+                updateAllLists();
+                renderAllOverlays();
+                showNotification(`Configuration loaded successfully! ${variables.length} variables, ${images.length} images, ${shapes.length} shapes imported.`);
+
+            } catch (error) {
+                showNotification('Invalid JSON configuration: ' + error.message, 'error');
+                console.error('Config parsing error:', error);
+            }
+        }
+
         function copyConfiguration() {
-            if (configOutput.textContent && configOutput.textContent !== 'Click on the PDF to start adding variables...') {
+            if (configOutput.textContent && configOutput.textContent !== 'Click on the PDF to start adding elements...') {
                 navigator.clipboard.writeText(configOutput.textContent).then(() => {
                     showNotification('Configuration copied to clipboard!');
                 });
@@ -1273,7 +2207,7 @@
         }
 
         function saveConfiguration() {
-            if (variables.length === 0) {
+            if (variables.length === 0 && images.length === 0 && shapes.length === 0) {
                 showNotification('No configuration to save', 'error');
                 return;
             }
@@ -1281,40 +2215,8 @@
             const configName = prompt('Enter configuration name:', `config_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}`);
             if (!configName) return;
 
-            const pageGroups = {};
-            variables.forEach(variable => {
-                // Convert 1-based display page to 0-based page for pdf_text_overlay
-                const zeroBasedPage = variable.page - 1;
-                if (!pageGroups[zeroBasedPage]) {
-                    pageGroups[zeroBasedPage] = [];
-                }
-
-                if (variable.type === 'simple') {
-                    pageGroups[zeroBasedPage].push({
-                        name: variable.name,
-                        "x-coordinate": variable.x,
-                        "y-coordinate": variable.y,
-                        font_size: variable.fontSize
-                    });
-                } else if (variable.type === 'conditional') {
-                    const conditionalVar = {
-                        name: variable.name,
-                        conditional_coordinates: variable.conditionalCoordinates.map(cond => ({
-                            if_value: cond.if_value,
-                            print_pattern: cond.print_pattern,
-                            "x-coordinate": cond.x,
-                            "y-coordinate": cond.y
-                        }))
-                    };
-                    pageGroups[zeroBasedPage].push(conditionalVar);
-                }
-            });
-
-            const configuration = Object.keys(pageGroups).map(page => ({
-                page_number: parseInt(page), // This will be 0-based
-                variables: pageGroups[page]
-            }));
-
+            const configText = configOutput.textContent;
+            
             fetch('/api/save-config', {
                 method: 'POST',
                 headers: {
@@ -1322,7 +2224,7 @@
                 },
                 body: JSON.stringify({
                     name: configName,
-                    configuration: configuration
+                    configuration: JSON.parse(configText)
                 })
             })
             .then(response => response.json())
@@ -1340,15 +2242,20 @@
 
         function prefillSampleData() {
             const variableNames = variables.map(v => v.name);
-            if (variableNames.length === 0) {
-                showNotification('Please add some variables first by clicking on the PDF.', 'error');
+            const imageNames = images.map(img => img.name);
+            const allNames = [...variableNames, ...imageNames];
+            
+            if (allNames.length === 0) {
+                showNotification('Please add some variables or images first by clicking on the PDF.', 'error');
                 return;
             }
 
             const sampleObj = {};
+            
+            // Add text variables
             variableNames.forEach(name => {
                 if (name.toLowerCase().includes('gender')) {
-                    sampleObj[name] = 'Male'; // Will trigger conditional coordinates
+                    sampleObj[name] = 'Male';
                 } else if (name.toLowerCase().includes('name')) {
                     sampleObj[name] = 'John Doe';
                 } else if (name.toLowerCase().includes('email')) {
@@ -1362,14 +2269,35 @@
                 } else if (name.toLowerCase().includes('company')) {
                     sampleObj[name] = 'Example Company Inc.';
                 } else if (name.toLowerCase().includes('status') || name.toLowerCase().includes('type')) {
-                    sampleObj[name] = 'Active'; // Will trigger conditional coordinates
+                    sampleObj[name] = 'Active';
                 } else {
                     sampleObj[name] = `Sample ${name}`;
                 }
             });
+            
+            // Add image variables with actual uploaded image URLs
+            images.forEach(image => {
+                // Find the corresponding uploaded image URL
+                const uploadedImage = uploadedImages.find(img => img.filename === image.filename);
+                if (uploadedImage && uploadedImage.url) {
+                    // Use the actual uploaded image URL
+                    sampleObj[image.name] = window.location.origin + uploadedImage.url;
+                } else {
+                    // Fallback to example URL if uploaded image not found
+                    if (image.name.toLowerCase().includes('logo')) {
+                        sampleObj[image.name] = 'https://example.com/logo.png';
+                    } else if (image.name.toLowerCase().includes('signature')) {
+                        sampleObj[image.name] = 'https://example.com/signature.png';
+                    } else if (image.name.toLowerCase().includes('photo')) {
+                        sampleObj[image.name] = 'https://example.com/photo.jpg';
+                    } else {
+                        sampleObj[image.name] = `https://example.com/${image.name}.png`;
+                    }
+                }
+            });
 
             sampleData.value = JSON.stringify(sampleObj, null, 2);
-            showNotification('Sample data generated based on variable names!');
+            showNotification('Sample data generated with actual uploaded image URLs!');
         }
 
         async function processDocument() {
@@ -1378,8 +2306,8 @@
                 return;
             }
 
-            if (variables.length === 0) {
-                showNotification('Please add some variables first', 'error');
+            if (variables.length === 0 && images.length === 0 && shapes.length === 0) {
+                showNotification('Please add some elements first', 'error');
                 return;
             }
 
@@ -1394,41 +2322,10 @@
             showLoading(processLoading);
             processBtn.disabled = true;
 
-            const pageGroups = {};
-            variables.forEach(variable => {
-                // Convert 1-based display page to 0-based page for pdf_text_overlay
-                const zeroBasedPage = variable.page - 1;
-                if (!pageGroups[zeroBasedPage]) {
-                    pageGroups[zeroBasedPage] = [];
-                }
-
-                if (variable.type === 'simple') {
-                    pageGroups[zeroBasedPage].push({
-                        name: variable.name,
-                        "x-coordinate": variable.x,
-                        "y-coordinate": variable.y,
-                        font_size: variable.fontSize
-                    });
-                } else if (variable.type === 'conditional') {
-                    const conditionalVar = {
-                        name: variable.name,
-                        conditional_coordinates: variable.conditionalCoordinates.map(cond => ({
-                            if_value: cond.if_value,
-                            print_pattern: cond.print_pattern,
-                            "x-coordinate": cond.x,
-                            "y-coordinate": cond.y
-                        }))
-                    };
-                    pageGroups[zeroBasedPage].push(conditionalVar);
-                }
-            });
-
-            const configuration = Object.keys(pageGroups).map(page => ({
-                page_number: parseInt(page), // This will be 0-based
-                variables: pageGroups[page]
-            }));
-
             try {
+                const configText = configOutput.textContent;
+                const configuration = JSON.parse(configText);
+
                 const response = await fetch('/api/process', {
                     method: 'POST',
                     headers: {
@@ -1443,7 +2340,7 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    showNotification('PDF processed successfully!');
+                    showNotification('PDF processed successfully with all overlays!');
                     processedFilename = result.output_filename;
                     downloadSection.style.display = 'block';
                 } else {
@@ -1466,16 +2363,66 @@
             window.open(`/api/download/${processedFilename}`, '_blank');
         }
 
+        async function testImageAccessibility() {
+            if (uploadedImages.length === 0) {
+                showNotification('No images uploaded to test', 'error');
+                return;
+            }
+
+            showNotification('Testing image accessibility...', 'success');
+            
+            for (const img of uploadedImages) {
+                try {
+                    const response = await fetch(`/api/test-image/${img.filename}`);
+                    const result = await response.json();
+                    
+                    console.log(`Image test result for ${img.filename}:`, result);
+                    
+                    if (!result.exists) {
+                        showNotification(`Image ${img.filename} not accessible!`, 'error');
+                        console.error(`Image not found: ${img.filename}`, result);
+                    }
+                } catch (error) {
+                    console.error(`Failed to test image ${img.filename}:`, error);
+                }
+            }
+            
+            showNotification('Image accessibility test completed. Check console for details.', 'success');
+        }
+
         // Initialize with sample data
-        sampleData.value = `{
-  "name": "John Doe",
-  "email": "john.doe@example.com",
-  "date": "2024-01-15",
-  "company": "Example Corp",
-  "position": "Software Engineer",
-  "gender": "Male",
-  "status": "Active"
-}`;
+        function initializeSampleData() {
+            const baseSampleData = {
+                "name": "John Doe",
+                "email": "john.doe@example.com",
+                "date": "2024-01-15",
+                "company": "Example Corp",
+                "position": "Software Engineer",
+                "gender": "Male",
+                "status": "Active"
+            };
+
+            // Add image URLs if images are uploaded
+            if (uploadedImages.length > 0) {
+                uploadedImages.forEach((img, index) => {
+                    const imageName = `image_${index + 1}`;
+                    baseSampleData[imageName] = window.location.origin + img.url;
+                });
+            } else {
+                // Default image URLs
+                baseSampleData.logo = "https://example.com/logo.png";
+                baseSampleData.signature = "https://example.com/signature.png";
+            }
+
+            sampleData.value = JSON.stringify(baseSampleData, null, 2);
+        }
+
+        // Initialize sample data on load and after image uploads
+        initializeSampleData();
+
+        // Initialize mode and load existing images
+        setMode('text');
+        refreshImageList();
     </script>
 </body>
 </html>
