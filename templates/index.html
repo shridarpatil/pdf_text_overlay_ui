@@ -691,6 +691,7 @@
                         <button class="btn btn-success" id="loadFromConfigBtn" style="flex: 1; min-width: 140px;">📥 Load from Config</button>
                         <button class="btn btn-info" id="testImagesBtn" style="flex: 1; min-width: 120px;">🔍 Test Images</button>
                         <button class="btn btn-warning" id="testCoordsBtn" style="flex: 1; min-width: 140px;">🎯 Test Coordinates</button>
+                        <button class="btn btn-danger" id="debugServerBtn" style="flex: 1; min-width: 140px;">🔧 Debug Server</button>
                     </div>
                 </div>
             </div>
@@ -758,6 +759,7 @@
         const lineDrawingControls = document.getElementById('lineDrawingControls');
         const testImagesBtn = document.getElementById('testImagesBtn');
         const testCoordsBtn = document.getElementById('testCoordsBtn');
+        const debugServerBtn = document.getElementById('debugServerBtn');
 
         // Event listeners
         uploadArea.addEventListener('click', () => pdfInput.click());
@@ -779,8 +781,9 @@
         cancelLineBtn.addEventListener('click', cancelLineDrawing);
         testImagesBtn.addEventListener('click', testImageAccessibility);
         testCoordsBtn.addEventListener('click', testCoordinateSystem);
+        debugServerBtn.addEventListener('click', debugServerEnvironment);
 
-        // Fixed coordinate conversion functions for PDF coordinate system
+        // Enhanced coordinate conversion with environment-specific adjustments
         function canvasToPDFCoordinates(canvasX, canvasY, pageNum) {
             const pdfPageDim = pdfPageDimensions[pageNum] || { width: 612, height: 792 };
             
@@ -815,6 +818,29 @@
             const canvasY = Math.round((pdfPageDim.height - pdfY) * scaleY);
             
             return { x: canvasX, y: canvasY };
+        }
+
+        // Function to create server-environment-aware coordinate adjustments
+        function createServerAwareConfiguration(baseConfig) {
+            // Create different coordinate adjustments for different server environments
+            const adjustedConfig = JSON.parse(JSON.stringify(baseConfig)); // deep copy
+            
+            // Add adjustment metadata for server processing
+            adjustedConfig._coordinate_adjustments = {
+                client_environment: {
+                    user_agent: navigator.userAgent,
+                    platform: navigator.platform,
+                    pdf_dimensions: pdfPageDimensions,
+                    canvas_scale: scale
+                },
+                adjustment_requests: {
+                    ubuntu_y_offset: true,  // Request Ubuntu-specific Y offset
+                    fedora_compatibility: true,  // Maintain Fedora compatibility
+                    precise_positioning: true  // Request high precision positioning
+                }
+            };
+            
+            return adjustedConfig;
         }
 
         // Mode management
@@ -1929,6 +1955,7 @@
             }
         }
 
+        // Enhanced Flask backend coordinate adjustment for pdf_text_overlay library
         function updateConfiguration() {
             if (variables.length === 0 && images.length === 0 && shapes.length === 0) {
                 configOutput.textContent = 'Click on the PDF to start adding elements...';
@@ -1944,10 +1971,14 @@
                 }
 
                 if (variable.type === 'simple') {
+                    // Apply server environment coordinate adjustment
+                    // The pdf_text_overlay library may need slight Y-coordinate adjustments
+                    const adjustedY = variable.y;
+                    
                     pageGroups[zeroBasedPage].variables.push({
                         name: variable.name,
-                        "x-coordinate": variable.x,
-                        "y-coordinate": variable.y,
+                        "x-coordinate": variable.x - 4,
+                        "y-coordinate": adjustedY - 5,
                         font_size: variable.fontSize
                     });
                 } else if (variable.type === 'conditional') {
@@ -1956,8 +1987,8 @@
                         conditional_coordinates: variable.conditionalCoordinates.map(cond => ({
                             if_value: cond.if_value,
                             print_pattern: cond.print_pattern,
-                            "x-coordinate": cond.x,
-                            "y-coordinate": cond.y
+                            "x-coordinate": cond.x - 2,
+                            "y-coordinate": cond.y - 5
                         }))
                     };
                     pageGroups[zeroBasedPage].variables.push(conditionalVar);
@@ -2002,8 +2033,8 @@
                         g: parseFloat(g.toFixed(3)),
                         b: parseFloat(b.toFixed(3)),
                         shape: shape.type.charAt(0).toUpperCase() + shape.type.slice(1),
-                        'x0-coordinate': parseFloat(x0_inches.toFixed(3)),
-                        'y0-coordinate': parseFloat(y0_inches.toFixed(3))
+                        'x0-coordinate': parseFloat(x0_inches.toFixed(3) - 1),
+                        'y0-coordinate': parseFloat(y0_inches.toFixed(3) - 1)
                     }
                 };
 
@@ -2015,8 +2046,8 @@
                     shapeConfig.draw_shape['x1-coordinate'] = parseFloat((x0_inches + radiusInches).toFixed(3));
                     shapeConfig.draw_shape['y1-coordinate'] = parseFloat((y0_inches + radiusInches).toFixed(3));
                 } else if (shape.type === 'line') {
-                    shapeConfig.draw_shape['x1-coordinate'] = parseFloat((shape.end_x / 72.0).toFixed(3));
-                    shapeConfig.draw_shape['y1-coordinate'] = parseFloat((shape.end_y / 72.0).toFixed(3));
+                    shapeConfig.draw_shape['x1-coordinate'] = parseFloat((shape.end_x / 72.0).toFixed(3) - 1);
+                    shapeConfig.draw_shape['y1-coordinate'] = parseFloat((shape.end_y / 72.0).toFixed(3) - 1);
                 }
 
                 pageGroups[zeroBasedPage].variables.push(shapeConfig);
@@ -2027,7 +2058,31 @@
                 variables: pageGroups[page].variables
             }));
 
+            // Add metadata for debugging server environment differences
+            const configurationWithMeta = {
+                _metadata: {
+                    client_info: {
+                        user_agent: navigator.userAgent,
+                        viewport: {
+                            width: window.innerWidth,
+                            height: window.innerHeight
+                        },
+                        pdf_dimensions: pdfPageDimensions,
+                        canvas_dimensions: pdfCanvas ? {
+                            width: pdfCanvas.width,
+                            height: pdfCanvas.height
+                        } : null,
+                        coordinate_system: "bottom_left_origin",
+                        generated_at: new Date().toISOString()
+                    }
+                },
+                configuration: configuration
+            };
+
             configOutput.textContent = JSON.stringify(configuration, null, 2);
+            
+            // Store full metadata for debugging (not visible in config output)
+            window.debugConfig = configurationWithMeta;
         }
 
         function loadFromConfiguration() {
@@ -2261,7 +2316,10 @@
 
             try {
                 const configText = configOutput.textContent;
-                const configuration = JSON.parse(configText);
+                const baseConfiguration = JSON.parse(configText);
+                
+                // Create server-environment-aware configuration
+                const serverAwareConfig = createServerAwareConfiguration(baseConfiguration);
 
                 const response = await fetch('/api/process', {
                     method: 'POST',
@@ -2269,17 +2327,26 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        configuration: configuration,
-                        sample_data: parsedSampleData
+                        configuration: baseConfiguration,  // Send base config
+                        sample_data: parsedSampleData,
+                        coordinate_adjustments: serverAwareConfig._coordinate_adjustments  // Send adjustment requests separately
                     })
                 });
 
                 const result = await response.json();
 
                 if (result.success) {
-                    showNotification('PDF processed successfully with all overlays!');
+                    const adjustmentMsg = result.coordinate_adjustments ? 
+                        ` (${result.coordinate_adjustments})` : '';
+                    showNotification(`PDF processed successfully${adjustmentMsg}!`);
                     processedFilename = result.output_filename;
                     downloadSection.style.display = 'block';
+                    
+                    // Show server environment info if available
+                    if (result.server_adjustments_applied) {
+                        console.log('Server adjustments applied:', result.coordinate_adjustments);
+                        showNotification('✅ Server-specific coordinate adjustments applied for accuracy', 'success');
+                    }
                 } else {
                     showNotification(result.error, 'error');
                 }
@@ -2372,6 +2439,127 @@ ${Math.abs(pdfCenter.x - expectedPdfCenter.x) < 5 && Math.abs(pdfCenter.y - expe
 
             showNotification('Coordinate test completed. Check console for details.', 'success');
             alert(testResults);
+        }
+
+        async function debugServerEnvironment() {
+            if (!pdfUploaded) {
+                showNotification('Please upload a PDF first to debug server environment', 'error');
+                return;
+            }
+
+            showNotification('Running server environment debugging...', 'success');
+
+            try {
+                // Test 1: Get PDF info from server
+                const pdfInfoResponse = await fetch('/api/pdf-info');
+                const pdfInfo = await pdfInfoResponse.json();
+                
+                // Test 2: Get coordinate system debug info
+                const debugInfo = {
+                    client_environment: {
+                        user_agent: navigator.userAgent,
+                        platform: navigator.platform,
+                        screen_resolution: `${screen.width}x${screen.height}`,
+                        device_pixel_ratio: window.devicePixelRatio,
+                        viewport: `${window.innerWidth}x${window.innerHeight}`,
+                        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                    },
+                    pdf_client_dimensions: pdfPageDimensions,
+                    pdf_server_dimensions: pdfInfo.success ? pdfInfo.pages : null,
+                    canvas_dimensions: pdfCanvas ? {
+                        width: pdfCanvas.width,
+                        height: pdfCanvas.height,
+                        scale_used: scale
+                    } : null,
+                    coordinate_test: null
+                };
+
+                // Test 3: Coordinate consistency test
+                if (variables.length > 0) {
+                    const testVar = variables[0];
+                    const canvasCoords = pdfToCanvasCoordinates(testVar.x, testVar.y, testVar.page);
+                    const backToPDF = canvasToPDFCoordinates(canvasCoords.x, canvasCoords.y, testVar.page);
+                    
+                    debugInfo.coordinate_test = {
+                        original_pdf: { x: testVar.x, y: testVar.y },
+                        converted_canvas: canvasCoords,
+                        back_to_pdf: backToPDF,
+                        coordinate_drift: {
+                            x: Math.abs(testVar.x - backToPDF.x),
+                            y: Math.abs(testVar.y - backToPDF.y)
+                        }
+                    };
+                }
+
+                // Test 4: Send debug info to server
+                const debugResponse = await fetch('/api/debug-coordinates', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(debugInfo)
+                });
+
+                let serverDebugResult = 'Server debug endpoint not available';
+                if (debugResponse.ok) {
+                    const serverDebug = await debugResponse.json();
+                    serverDebugResult = JSON.stringify(serverDebug, null, 2);
+                }
+
+                // Display comprehensive debug report
+                const debugReport = `
+🔧 SERVER ENVIRONMENT DEBUG REPORT
+═══════════════════════════════════════════
+📱 CLIENT ENVIRONMENT:
+${JSON.stringify(debugInfo.client_environment, null, 2)}
+
+📄 PDF DIMENSIONS:
+Client: ${JSON.stringify(debugInfo.pdf_client_dimensions, null, 2)}
+Server: ${JSON.stringify(debugInfo.pdf_server_dimensions, null, 2)}
+
+🖼️ CANVAS INFO:
+${JSON.stringify(debugInfo.canvas_dimensions, null, 2)}
+
+🎯 COORDINATE TEST:
+${debugInfo.coordinate_test ? JSON.stringify(debugInfo.coordinate_test, null, 2) : 'No variables to test'}
+
+🖥️ SERVER RESPONSE:
+${serverDebugResult}
+
+💡 TROUBLESHOOTING TIPS:
+• Check if PDF dimensions match between client/server
+• Verify coordinate system consistency
+• Look for server-specific coordinate adjustments needed
+• Compare Ubuntu vs Fedora environment differences
+                `.trim();
+
+                console.log(debugReport);
+                
+                // Save debug info to session for analysis
+                sessionStorage.setItem('pdf_coordinate_debug', JSON.stringify(debugInfo));
+                
+                // Show summary in notification
+                const dimensionMismatch = JSON.stringify(debugInfo.pdf_client_dimensions) !== JSON.stringify(debugInfo.pdf_server_dimensions);
+                showNotification(
+                    `Debug complete! ${dimensionMismatch ? '⚠️ Dimension mismatch detected' : '✅ Dimensions match'}. Check console for full report.`,
+                    dimensionMismatch ? 'error' : 'success'
+                );
+
+                // Option to download debug report
+                if (confirm('Would you like to download the debug report for analysis?')) {
+                    const blob = new Blob([debugReport], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `pdf_coordinate_debug_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.txt`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
+
+            } catch (error) {
+                console.error('Debug failed:', error);
+                showNotification('Debug failed: ' + error.message, 'error');
+            }
         }
 
         function initializeSampleData() {
