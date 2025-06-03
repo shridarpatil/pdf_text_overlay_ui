@@ -678,6 +678,8 @@
                         💡 <strong>Note:</strong> Page numbers in config are 0-based (Page 1 → 0, Page 2 → 1, etc.)
                         <br>📝 Shapes are converted to draw_shape variables with coordinates in inches (72 DPI conversion)
                         <br>🎨 Colors are converted to RGB values (0.0-1.0) in the draw_shape format
+                        <br><strong>🔄 Coordinate System:</strong> PDF uses bottom-left origin, config coordinates match this system
+                        <br><strong>📐 Formula:</strong> PDF_Y = Page_Height - Canvas_Click_Y (e.g., for 792pt page: center click ~396 → PDF_Y ~396)
                     </div>
                     <div class="form-group">
                         <label>Configuration JSON (Editable):</label>
@@ -688,6 +690,7 @@
                         <button class="btn btn-secondary" id="saveConfigBtn" style="flex: 1; min-width: 120px;">💾 Save Config</button>
                         <button class="btn btn-success" id="loadFromConfigBtn" style="flex: 1; min-width: 140px;">📥 Load from Config</button>
                         <button class="btn btn-info" id="testImagesBtn" style="flex: 1; min-width: 120px;">🔍 Test Images</button>
+                        <button class="btn btn-warning" id="testCoordsBtn" style="flex: 1; min-width: 140px;">🎯 Test Coordinates</button>
                     </div>
                 </div>
             </div>
@@ -754,6 +757,7 @@
         const cancelLineBtn = document.getElementById('cancelLineBtn');
         const lineDrawingControls = document.getElementById('lineDrawingControls');
         const testImagesBtn = document.getElementById('testImagesBtn');
+        const testCoordsBtn = document.getElementById('testCoordsBtn');
 
         // Event listeners
         uploadArea.addEventListener('click', () => pdfInput.click());
@@ -774,8 +778,9 @@
         imageInput.addEventListener('change', handleImageUpload);
         cancelLineBtn.addEventListener('click', cancelLineDrawing);
         testImagesBtn.addEventListener('click', testImageAccessibility);
+        testCoordsBtn.addEventListener('click', testCoordinateSystem);
 
-        // Fixed coordinate conversion functions
+        // Fixed coordinate conversion functions for PDF coordinate system
         function canvasToPDFCoordinates(canvasX, canvasY, pageNum) {
             const pdfPageDim = pdfPageDimensions[pageNum] || { width: 612, height: 792 };
             
@@ -784,8 +789,14 @@
             const scaleY = pdfPageDim.height / pdfCanvas.height;
             
             // Convert canvas coordinates to PDF coordinates
+            // Canvas: (0,0) = top-left, Y increases downward
+            // PDF: (0,0) = bottom-left, Y increases upward
             const pdfX = Math.round(canvasX * scaleX);
-            const pdfY = Math.round(pdfPageDim.height - (canvasY * scaleY)); // PDF Y increases upward
+            const pdfY = Math.round(pdfPageDim.height - (canvasY * scaleY));
+            
+            console.log(`Canvas to PDF: Canvas(${canvasX}, ${canvasY}) -> PDF(${pdfX}, ${pdfY})`);
+            console.log(`Page dimensions: ${pdfPageDim.width}x${pdfPageDim.height}, Canvas: ${pdfCanvas.width}x${pdfCanvas.height}`);
+            console.log(`Scale factors: X=${scaleX.toFixed(3)}, Y=${scaleY.toFixed(3)}`);
             
             return { x: pdfX, y: pdfY };
         }
@@ -798,8 +809,10 @@
             const scaleY = pdfCanvas.height / pdfPageDim.height;
             
             // Convert PDF coordinates to canvas coordinates
+            // PDF: (0,0) = bottom-left, Y increases upward
+            // Canvas: (0,0) = top-left, Y increases downward
             const canvasX = Math.round(pdfX * scaleX);
-            const canvasY = Math.round((pdfPageDim.height - pdfY) * scaleY); // PDF Y increases upward
+            const canvasY = Math.round((pdfPageDim.height - pdfY) * scaleY);
             
             return { x: canvasX, y: canvasY };
         }
@@ -1228,7 +1241,7 @@
             updateConfiguration();
             renderAllOverlays();
             
-            showNotification(`Added variable "${variableName}" at PDF coordinates (${pdfCoords.x}, ${pdfCoords.y})`);
+            showNotification(`✅ Added "${variableName}" at PDF coords (${pdfCoords.x}, ${pdfCoords.y}) - Canvas click (${canvasX}, ${canvasY})`);
         }
 
         function addImageAtPosition(canvasX, canvasY, page) {
@@ -1671,6 +1684,10 @@
                             <strong>📍 Coordinates</strong>
                             <br>Page: ${variable.page} (Config: ${variable.page - 1})
                             <br>PDF Position: X=${variable.x}, Y=${variable.y}
+                            <br><strong>🔄 Coordinate System Info:</strong>
+                            <br>PDF uses bottom-left origin (0,0)
+                            <br>Canvas uses top-left origin (0,0)
+                            <br>Y-axis conversion: PDF_Y = PageHeight - Canvas_Y
                         </div>
                         <div class="coordinate-debug">
                             <strong>🔧 Debug Info:</strong>
@@ -1678,6 +1695,8 @@
                             <br>PDF Size: ${pdfPageDimensions[variable.page] ? pdfPageDimensions[variable.page].width + 'x' + pdfPageDimensions[variable.page].height : 'N/A'}
                             <br>Scale Factors: ${pdfCanvas && pdfPageDimensions[variable.page] ? 
                                 `X=${(pdfPageDimensions[variable.page].width / pdfCanvas.width).toFixed(3)}, Y=${(pdfPageDimensions[variable.page].height / pdfCanvas.height).toFixed(3)}` : 'N/A'}
+                            <br><strong>Verification:</strong> Canvas Y → PDF Y conversion
+                            <br>For center click: Canvas_Y ≈ ${pdfCanvas ? Math.round(pdfCanvas.height/2) : 'N/A'} → PDF_Y ≈ ${pdfPageDimensions[variable.page] ? Math.round(pdfPageDimensions[variable.page].height/2) : 'N/A'}
                         </div>
                         <div class="form-group">
                             <label>Page Number:</label>
@@ -2306,6 +2325,53 @@
             }
             
             showNotification('Image accessibility test completed. Check console for details.', 'success');
+        }
+
+        function testCoordinateSystem() {
+            if (!pdfCanvas || !pdfPageDimensions[currentPage]) {
+                showNotification('Please upload a PDF first to test coordinates', 'error');
+                return;
+            }
+
+            const pdfPageDim = pdfPageDimensions[currentPage];
+            const canvasCenter = {
+                x: Math.round(pdfCanvas.width / 2),
+                y: Math.round(pdfCanvas.height / 2)
+            };
+            
+            const pdfCenter = canvasToPDFCoordinates(canvasCenter.x, canvasCenter.y, currentPage);
+            const expectedPdfCenter = {
+                x: Math.round(pdfPageDim.width / 2),
+                y: Math.round(pdfPageDim.height / 2)
+            };
+
+            console.log('=== COORDINATE SYSTEM TEST ===');
+            console.log('PDF Page Dimensions:', pdfPageDim);
+            console.log('Canvas Dimensions:', pdfCanvas.width, 'x', pdfCanvas.height);
+            console.log('Canvas Center Click:', canvasCenter);
+            console.log('Converted PDF Coordinates:', pdfCenter);
+            console.log('Expected PDF Center:', expectedPdfCenter);
+            console.log('Coordinate Match:', 
+                Math.abs(pdfCenter.x - expectedPdfCenter.x) < 5 && 
+                Math.abs(pdfCenter.y - expectedPdfCenter.y) < 5 ? '✅ GOOD' : '❌ MISMATCH');
+
+            const testResults = `
+🎯 COORDINATE TEST RESULTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📄 PDF Page: ${pdfPageDim.width} x ${pdfPageDim.height} pts
+🖼️ Canvas: ${pdfCanvas.width} x ${pdfCanvas.height} px
+📍 Canvas Center: (${canvasCenter.x}, ${canvasCenter.y})
+📍 PDF Coordinates: (${pdfCenter.x}, ${pdfCenter.y})
+📍 Expected PDF Center: (${expectedPdfCenter.x}, ${expectedPdfCenter.y})
+📊 Scale Factors: X=${(pdfPageDim.width/pdfCanvas.width).toFixed(3)}, Y=${(pdfPageDim.height/pdfCanvas.height).toFixed(3)}
+
+${Math.abs(pdfCenter.x - expectedPdfCenter.x) < 5 && Math.abs(pdfCenter.y - expectedPdfCenter.y) < 5 
+    ? '✅ COORDINATES ARE ACCURATE!' 
+    : '❌ COORDINATE MISMATCH - Check conversion logic'}
+            `.trim();
+
+            showNotification('Coordinate test completed. Check console for details.', 'success');
+            alert(testResults);
         }
 
         function initializeSampleData() {
