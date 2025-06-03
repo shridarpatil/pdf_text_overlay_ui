@@ -1078,7 +1078,7 @@
                 if (variable.type === 'simple') {
                     let canvasCoords;
                     if (variable.displayX && variable.displayY) {
-                        canvasCoords = pdfToCanvasCoordinates(variable.displayX, variable.displayY, currentPage, true);
+                        canvasCoords = pdfToCanvasCoordinates(variable.x, variable.y, currentPage, true);
                     } else {
                         canvasCoords = pdfToCanvasCoordinates(variable.x, variable.y, currentPage, false);
                     }
@@ -1086,13 +1086,13 @@
                     const overlay = document.createElement('div');
                     overlay.className = 'text-overlay';
                     overlay.textContent = `${variable.name} (${variable.x}, ${variable.y})`;
-                    overlay.style.left = canvasCoords.x + 'px';
-                    overlay.style.top = canvasCoords.y + 'px';
+                    overlay.style.left = canvasCoords.x + 120 + 'px';
+                    overlay.style.top = canvasCoords.y - 10 + 'px';
                     pdfViewer.appendChild(overlay);
 
                     const dot = document.createElement('div');
                     dot.className = 'coordinate-dot simple';
-                    dot.style.left = canvasCoords.x + 'px';
+                    dot.style.left = canvasCoords.x + 120 + 'px';
                     dot.style.top = canvasCoords.y + 'px';
                     pdfViewer.appendChild(dot);
 
@@ -1109,14 +1109,14 @@
                         overlay.className = 'text-overlay';
                         overlay.style.background = 'rgba(255, 152, 0, 0.8)';
                         overlay.textContent = `${variable.name}[${cond.if_value || '?'}] (${cond.x}, ${cond.y})`;
-                        overlay.style.left = canvasCoords.x + 'px';
-                        overlay.style.top = canvasCoords.y + 'px';
+                        overlay.style.left = canvasCoords.x + 141 + 120 + 'px';
+                        overlay.style.top = canvasCoords.y + 112 + 'px';
                         pdfViewer.appendChild(overlay);
 
                         const dot = document.createElement('div');
                         dot.className = 'coordinate-dot conditional';
-                        dot.style.left = canvasCoords.x + 'px';
-                        dot.style.top = canvasCoords.y + 'px';
+                        dot.style.left = canvasCoords.x + 141 + 120 + 'px';
+                        dot.style.top = canvasCoords.y + 122 + 'px';
                         pdfViewer.appendChild(dot);
                     });
                 }
@@ -1149,14 +1149,14 @@
                 const overlay = document.createElement('div');
                 overlay.className = 'shape-overlay';
                 overlay.textContent = `${shape.type} (${shape.width}x${shape.height})`;
-                overlay.style.left = canvasCoords.x + 'px';
-                overlay.style.top = canvasCoords.y + 'px';
+                overlay.style.left = canvasCoords.x + 260 + 'px';
+                overlay.style.top = canvasCoords.y + 122 + 'px';
                 pdfViewer.appendChild(overlay);
 
                 const dot = document.createElement('div');
                 dot.className = 'coordinate-dot shape';
-                dot.style.left = canvasCoords.x + 'px';
-                dot.style.top = canvasCoords.y + 'px';
+                dot.style.left = canvasCoords.x + 260 + 'px';
+                dot.style.top = canvasCoords.y + 122 + 'px';
                 pdfViewer.appendChild(dot);
             });
         }
@@ -1298,8 +1298,8 @@
             tempPoint.className = 'temp-line-point';
             tempPoint.id = `temp-${pointType}-point`;
             tempPoint.style.position = 'absolute';
-            tempPoint.style.left = canvasX + 'px';
-            tempPoint.style.top = canvasY + 'px';
+            tempPoint.style.left = canvasX + 260 + 'px';
+            tempPoint.style.top = canvasY + 162 + 'px';
             tempPoint.style.width = '12px';
             tempPoint.style.height = '12px';
             tempPoint.style.borderRadius = '50%';
@@ -1438,8 +1438,8 @@
             let displayPdfX, displayPdfY;
 
             if (isDisplayCoords) {
-                displayPdfX = pdfX + 89;
-                displayPdfY = pdfY - 89;
+                displayPdfX = pdfX + 93;
+                displayPdfY = pdfY - 82;
             } else {
                 displayPdfX = pdfX - 2;
                 displayPdfY = pdfY - 2;
