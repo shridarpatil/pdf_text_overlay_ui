@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Overlay Tool - User Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f8f9fa;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            padding: 3rem 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .quick-nav {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            margin-bottom: 2rem;
+        }
+
+        .quick-nav h3 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .nav-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .nav-link {
+            display: block;
+            padding: 0.75rem 1rem;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            color: #495057;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            border-left: 4px solid #667eea;
+        }
+
+        .nav-link:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .section {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            margin-bottom: 2rem;
+        }
+
+        .section h2 {
+            color: #667eea;
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid #667eea;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section h3 {
+            color: #495057;
+            font-size: 1.3rem;
+            margin: 1.5rem 0 1rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .step-list {
+            list-style: none;
+            counter-reset: step-counter;
+        }
+
+        .step-list li {
+            counter-increment: step-counter;
+            background: #f8f9fa;
+            margin: 1rem 0;
+            padding: 1.5rem;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            position: relative;
+        }
+
+        .step-list li::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: -12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #667eea;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .feature-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border-left: 4px solid #28a745;
+            transition: transform 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .feature-card h4 {
+            color: #28a745;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .tip-box {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 1.5rem 0;
+            border-left: 4px solid #ffc107;
+        }
+
+        .tip-box h4 {
+            color: #b8860b;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .warning-box {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 1.5rem 0;
+            border-left: 4px solid #dc3545;
+        }
+
+        .warning-box h4 {
+            color: #a02834;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .highlight {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .button-demo {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            margin: 0.25rem;
+            font-size: 0.9rem;
+        }
+
+        .mode-indicator {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin: 0.2rem;
+        }
+
+        .mode-text { background: rgba(102, 126, 234, 0.2); color: #667eea; }
+        .mode-image { background: rgba(76, 175, 80, 0.2); color: #4caf50; }
+        .mode-shape { background: rgba(255, 152, 0, 0.2); color: #ff9800; }
+
+        @media (max-width: 768px) {
+            .container { padding: 10px; }
+            .header { padding: 2rem 1rem; }
+            .header h1 { font-size: 2rem; }
+            .nav-links { grid-template-columns: 1fr; }
+            .feature-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 PDF Overlay Tool</h1>
+            <p>Complete User Guide - How to Add Text, Images, and Shapes to PDFs</p>
+        </div>
+
+        <div class="quick-nav">
+            <h3>📋 Quick Navigation</h3>
+            <div class="nav-links">
+                <a href="#getting-started" class="nav-link">🚀 Getting Started</a>
+                <a href="#text-mode" class="nav-link">📝 Adding Text</a>
+                <a href="#image-mode" class="nav-link">🖼️ Adding Images</a>
+                <a href="#shape-mode" class="nav-link">🔲 Drawing Shapes</a>
+                <a href="#processing" class="nav-link">⚙️ Processing PDFs</a>
+                <a href="#troubleshooting" class="nav-link">🔧 Troubleshooting</a>
+            </div>
+        </div>
+
+        <section id="getting-started" class="section">
+            <h2>🚀 Getting Started</h2>
+            
+            <h3>📁 Step 1: Upload Your PDF</h3>
+            <ol class="step-list">
+                <li><strong>Click the upload area</strong> or drag and drop your PDF file into the blue dashed area</li>
+                <li><strong>Wait for processing</strong> - the PDF will load and display in the preview area</li>
+                <li><strong>Navigate pages</strong> using the ← Previous and Next → buttons if your PDF has multiple pages</li>
+            </ol>
+
+            <div class="tip-box">
+                <h4>💡 Upload Tips</h4>
+                <ul>
+                    <li>Maximum file size: <strong>16MB</strong></li>
+                    <li>Only PDF files are supported</li>
+                    <li>Multi-page PDFs are fully supported</li>
+                    <li>The preview shows exactly how your PDF will look</li>
+                </ul>
+            </div>
+
+            <h3>🎯 Step 2: Choose Your Mode</h3>
+            <p>The tool has three editing modes for different types of overlays:</p>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4><span class="mode-indicator mode-text">📝 Text Mode</span></h4>
+                    <p>Add dynamic text that changes based on your data. Perfect for names, dates, addresses, and form fields.</p>
+                </div>
+                <div class="feature-card">
+                    <h4><span class="mode-indicator mode-image">🖼️ Image Mode</span></h4>
+                    <p>Insert logos, signatures, photos, or any images from uploaded files or web URLs.</p>
+                </div>
+                <div class="feature-card">
+                    <h4><span class="mode-indicator mode-shape">🔲 Shape Mode</span></h4>
+                    <p>Draw rectangles, circles, and lines with custom colors and styles for borders, highlights, or decorative elements.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="text-mode" class="section">
+            <h2>📝 Adding Text Variables</h2>
+
+            <h3>🎯 Basic Text Placement</h3>
+            <ol class="step-list">
+                <li><strong>Select Text Mode</strong> by clicking the <span class="mode-indicator mode-text">📝 Text</span> button</li>
+                <li><strong>Click on the PDF</strong> where you want text to appear (aim for the center of text fields or checkboxes)</li>
+                <li><strong>A blue dot appears</strong> showing where your text will be placed</li>
+                <li><strong>Configure the variable</strong> in the "Text Variables" panel on the right</li>
+            </ol>
+
+            <div class="tip-box">
+                <h4>💡 Positioning Tips</h4>
+                <ul>
+                    <li><strong>Click the center</strong> of checkboxes, text fields, or signature lines</li>
+                    <li>The tool automatically adjusts coordinates for proper text baseline positioning</li>
+                    <li>Blue dots show exactly where text will appear</li>
+                    <li>Fine-tune by adjusting X/Y coordinates in the configuration panel</li>
+                </ul>
+            </div>
+
+            <h3>⚙️ Text Variable Configuration</h3>
+            <p>For each text variable you can configure:</p>
+            <ul>
+                <li><strong>Variable Name:</strong> Unique identifier (e.g., "customer_name", "date", "amount")</li>
+                <li><strong>Font Size:</strong> Text size from 6 to 72 points</li>
+                <li><strong>Position:</strong> X and Y coordinates (fine-tune if needed)</li>
+                <li><strong>Page:</strong> Which page this variable appears on</li>
+            </ul>
+
+            <h3>🔄 Conditional Text (Advanced)</h3>
+            <p>Use conditional variables when you need different text or positions based on data values:</p>
+            <ol class="step-list">
+                <li><strong>Change Variable Type</strong> to "Conditional (Multiple Positions)"</li>
+                <li><strong>Add Conditions</strong> using the "+ Add Condition" button or CTRL</li>
+                <li><strong>Set If Value:</strong> The data value that triggers this condition (e.g., "Male", "Female")</li>
+                <li><strong>Set Print Pattern:</strong> What to display when the condition matches (e.g., "✓", "X", "*")</li>
+                <li><strong>Position Each Condition:</strong> Click on the PDF while holding Ctrl/Cmd to add conditional positions</li>
+            </ol>
+
+            <div class="code-block">
+Example: Gender checkboxes
+• If data value is "Male" → print "✓" at position (100, 200)
+• If data value is "Female" → print "✓" at position (200, 200)</div>
+        </section>
+
+        <section id="image-mode" class="section">
+            <h2>🖼️ Adding Image Overlays</h2>
+
+            <h3>📷 Step 1: Upload Images</h3>
+            <ol class="step-list">
+                <li><strong>Select Image Mode</strong> by clicking the <span class="mode-indicator mode-image">🖼️ Images</span> button</li>
+                <li><strong>Upload your images</strong> using the green upload area that appears</li>
+                <li><strong>Choose multiple files</strong> if needed (PNG, JPG, GIF, BMP supported)</li>
+                <li><strong>Verify upload</strong> - uploaded images will appear in the list below</li>
+            </ol>
+
+            <div class="tip-box">
+                <h4>💡 Image Tips</h4>
+                <ul>
+                    <li><strong>PNG format</strong> is best for logos and graphics with transparency</li>
+                    <li><strong>JPEG format</strong> is good for photos and complex images</li>
+                    <li>Maximum file size: <strong>10MB per image</strong></li>
+                    <li>Use <span class="button-demo">🔄 Refresh Images</span> if images don't appear</li>
+                </ul>
+            </div>
+
+            <h3>🎯 Step 2: Place Images on PDF</h3>
+            <ol class="step-list">
+                <li><strong>Click on the PDF</strong> where you want the image positioned</li>
+                <li><strong>Select an image</strong> from the dialog (if you have multiple uploaded)</li>
+                <li><strong>Enter variable name</strong> (e.g., "logo", "signature", "photo")</li>
+                <li><strong>Green dot appears</strong> showing the image position</li>
+                <li><strong>Configure size and position</strong> in the "Image Overlays" panel</li>
+            </ol>
+
+            <h3>⚙️ Image Configuration</h3>
+            <p>For each image overlay you can adjust:</p>
+            <ul>
+                <li><strong>Variable Name:</strong> Used to reference the image in your data</li>
+                <li><strong>Position:</strong> X and Y coordinates for precise placement</li>
+                <li><strong>Size:</strong> Width and height in PDF points</li>
+                <li><strong>Reference File:</strong> Which uploaded file to use as preview</li>
+            </ul>
+
+            <div class="warning-box">
+                <h4>⚠️ Important: Image Data</h4>
+                <p>The actual image comes from the <strong>Sample Data</strong> section, not the uploaded file. The uploaded file is just for reference and positioning. Make sure your sample data contains the correct image URL for each image variable.</p>
+            </div>
+        </section>
+
+        <section id="shape-mode" class="section">
+            <h2>🔲 Drawing Shapes</h2>
+
+            <h3>🎨 Available Shapes</h3>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>▭ Rectangle</h4>
+                    <p>Perfect for borders, highlights, or boxes. Click once to place.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>● Circle</h4>
+                    <p>Great for markers, bullet points, or decorative elements. Click once to place.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>📏 Line</h4>
+                    <p>Draw connecting lines, underlines, or dividers. Interactive two-point drawing.</p>
+                </div>
+            </div>
+
+            <h3>🎯 Basic Shape Drawing</h3>
+            <ol class="step-list">
+                <li><strong>Select Shape Mode</strong> by clicking the <span class="mode-indicator mode-shape">🔲 Shapes</span> button</li>
+                <li><strong>Click on the PDF</strong> where you want the shape</li>
+                <li><strong>Choose shape type</strong> from the dialog (Rectangle, Circle, or Line)</li>
+                <li><strong>Orange dot appears</strong> showing the shape position</li>
+                <li><strong>Customize appearance</strong> in the "Shape Overlays" panel</li>
+            </ol>
+
+            <h3>📏 Interactive Line Drawing</h3>
+            <p>Lines have special two-point drawing for precise positioning:</p>
+            <ol class="step-list">
+                <li><strong>Choose "Line (two-point)"</strong> from the shape dialog</li>
+                <li><strong>Click for start point</strong> - a red dot with "START" label appears</li>
+                <li><strong>Click for end point</strong> - the line is created between the two points</li>
+                <li><strong>Use "❌ Cancel Line Drawing"</strong> to abort if needed</li>
+            </ol>
+
+            <div class="tip-box">
+                <h4>💡 Line Drawing Tips</h4>
+                <ul>
+                    <li>Perfect for connecting elements or creating custom underlines</li>
+                    <li>You can see the exact start and end points before committing</li>
+                    <li>Line length is automatically calculated and displayed</li>
+                    <li>Coordinates are shown in both PDF points and inches</li>
+                </ul>
+            </div>
+
+            <h3>🎨 Shape Styling</h3>
+            <p>Customize your shapes with these options:</p>
+            <ul>
+                <li><strong>Color:</strong> Use the color picker for any color</li>
+                <li><strong>Fill:</strong> Solid fill vs outline only (not available for lines)</li>
+                <li><strong>Stroke Width:</strong> Line thickness from 1-10 points</li>
+                <li><strong>Size:</strong> Width/height for rectangles, radius for circles</li>
+            </ul>
+        </section>
+
+        <section id="processing" class="section">
+            <h2>⚙️ Processing Your PDF</h2>
+
+            <h3>📝 Step 1: Configure Sample Data</h3>
+            <ol class="step-list">
+                <li><strong>Review the "Sample Data" section</strong> - this contains the actual values that will appear in your PDF</li>
+                <li><strong>Click <span class="button-demo">✨ Prefill Data Based on Config</span></strong> to auto-generate sample data</li>
+                <li><strong>Edit the JSON data</strong> to match your actual values</li>
+                <li><strong>Ensure image variables</strong> have valid URLs (auto-generated for uploaded images)</li>
+            </ol>
+
+            <div class="code-block">
+Example Sample Data:
+{
+  "customer_name": "John Doe",
+  "date": "2024-01-15",
+  "amount": "$1,500.00",
+  "logo": "http://localhost:5000/api/image/company_logo.png",
+  "signature": "http://localhost:5000/api/image/signature.png"
+}</div>
+
+            <h3>🚀 Step 2: Process and Download</h3>
+            <ol class="step-list">
+                <li><strong>Click <span class="button-demo">🚀 Process PDF with All Overlays</span></strong></li>
+                <li><strong>Wait for processing</strong> - you'll see a progress indicator</li>
+                <li><strong>Download appears</strong> when processing is complete</li>
+                <li><strong>Click <span class="button-demo">💾 Download Processed PDF</span></strong> to get your final PDF</li>
+            </ol>
+
+            <div class="tip-box">
+                <h4>💡 Processing Tips</h4>
+                <ul>
+                    <li>Processing usually takes 5-30 seconds depending on PDF size and complexity</li>
+                    <li>All your text, images, and shapes will be permanently added to the PDF</li>
+                    <li>The original PDF is never modified - you get a new processed version</li>
+                    <li>You can process the same configuration multiple times with different data</li>
+                </ul>
+            </div>
+
+            <h3>💾 Configuration Management</h3>
+            <p>Save time by managing your configurations:</p>
+            <ul>
+                <li><strong><span class="button-demo">📋 Copy Config</span>:</strong> Copy configuration JSON to clipboard</li>
+                <li><strong><span class="button-demo">💾 Save Config</span>:</strong> Save configuration for later use</li>
+                <li><strong><span class="button-demo">📥 Load from Config</span>:</strong> Load a previously saved configuration</li>
+            </ul>
+        </section>
+
+        <section id="troubleshooting" class="section">
+            <h2>🔧 Troubleshooting</h2>
+
+            <h3>🚫 Common Issues and Solutions</h3>
+
+            <div class="warning-box">
+                <h4>⚠️ "Image not found" or 404 errors</h4>
+                <ul>
+                    <li>Click <span class="button-demo">🔄 Refresh Images</span> in the Image Upload section</li>
+                    <li>Re-upload your images if they don't appear</li>
+                    <li>Use <span class="button-demo">🔍 Test Images</span> to check image accessibility</li>
+                    <li>Make sure image URLs in sample data match uploaded files</li>
+                </ul>
+            </div>
+
+            <div class="warning-box">
+                <h4>⚠️ Text appears in wrong position</h4>
+                <ul>
+                    <li>Click the <strong>center</strong> of text fields, not the edges</li>
+                    <li>Fine-tune coordinates by ±2-5 points in the variable settings</li>
+                    <li>Remember: PDF coordinate system has origin at bottom-left</li>
+                    <li>Use the coordinate display to see exact positioning</li>
+                </ul>
+            </div>
+
+            <div class="warning-box">
+                <h4>⚠️ Processing fails with errors</h4>
+                <ul>
+                    <li>Check that your sample data is valid JSON (no missing commas or quotes)</li>
+                    <li>Ensure all image URLs are accessible</li>
+                    <li>Verify variable names match between configuration and sample data</li>
+                    <li>Make sure shape coordinates are reasonable values</li>
+                </ul>
+            </div>
+
+            <h3>🔍 Debug Tools</h3>
+            <p>Use these built-in tools to diagnose issues:</p>
+            <ul>
+                <li><strong><span class="button-demo">🔍 Test Images</span>:</strong> Verify that uploaded images are accessible</li>
+                <li><strong><span class="button-demo">🔄 Refresh Images</span>:</strong> Reload the current session's images</li>
+                <li><strong>Browser Console:</strong> Press F12 and check Console tab for detailed error messages</li>
+                <li><strong>Configuration JSON:</strong> Copy and validate using online JSON validators</li>
+            </ul>
+
+            <h3>💡 Best Practices</h3>
+            <ul>
+                <li><strong>Start simple:</strong> Add one element at a time and test processing</li>
+                <li><strong>Use prefill:</strong> Always use the "Prefill Data" button to generate correct sample data</li>
+                <li><strong>Test frequently:</strong> Process small configurations to catch issues early</li>
+                <li><strong>Save configurations:</strong> Save working configurations before making major changes</li>
+                <li><strong>Check coordinates:</strong> Use the coordinate displays to verify positioning</li>
+            </ul>
+
+            <div class="tip-box">
+                <h4>💡 Getting Help</h4>
+                <p>If you're still having issues:</p>
+                <ol>
+                    <li>Try with a simple test PDF first</li>
+                    <li>Use browser developer tools (F12) to check for errors</li>
+                    <li>Start with just text variables, then add images and shapes</li>
+                    <li>Make sure you're using supported file formats and sizes</li>
+                </ol>
+            </div>
+        </section>
+
+        <div class="section" style="text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <h2 style="color: white; border-bottom: 3px solid white;">🎉 You're Ready to Go!</h2>
+            <p style="font-size: 1.1rem; margin-bottom: 0;">
+                You now know how to add text, images, and shapes to any PDF. 
+                Start with simple elements and work your way up to complex layouts.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

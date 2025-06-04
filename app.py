@@ -210,6 +210,11 @@ def index():
     """Main page with the PDF overlay configuration tool"""
     return render_template('index.html')
 
+@app.route('/usage')
+def usage():
+    """Main page with the PDF overlay configuration tool"""
+    return render_template('usage.html')
+
 @app.route('/api/upload', methods=['POST'])
 def upload_pdf():
     """Handle PDF file upload"""
@@ -523,7 +528,7 @@ def process_pdf():
                 output = pdf_writer(pdf_file, adjusted_config, sample_data, None)
 
         # Save output PDF
-        output_filename = f"output_{SERVER_DIST}_{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        output_filename = f"output_{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         output_path = os.path.join(OUTPUT_FOLDER, output_filename)
         
         with open(output_path, 'wb') as output_file:
@@ -532,7 +537,7 @@ def process_pdf():
         return jsonify({
             'success': True,
             'output_filename': output_filename,
-            'message': f'PDF processed successfully on {SERVER_DIST} server',
+            'message': f'PDF processed successfully',
             'server_adjustments_applied': SERVER_DIST == 'Ubuntu' and total_adjustments > 0,
             'coordinate_adjustments': "",
             'adjustments_count': total_adjustments,
@@ -544,7 +549,7 @@ def process_pdf():
         })
         
     except Exception as e:
-        error_msg = f'Processing failed on {SERVER_DIST}: {str(e)}'
+        error_msg = f'Processing failed: {str(e)}'
         print(f"Error processing PDF: {traceback.format_exc()}")
         return jsonify({
             'error': error_msg, 
