@@ -186,6 +186,8 @@
 
         .coordinate-dot.simple {
             background-color: #667eea;
+            /* Position dot at baseline */
+            margin-top: -4px;
         }
 
         .coordinate-dot.conditional {
@@ -198,6 +200,54 @@
 
         .coordinate-dot.shape {
             background-color: #ff9800;
+        }
+
+        /* Data preview styles */
+        .data-preview {
+            position: absolute;
+            pointer-events: none;
+            z-index: 998;
+            font-family: Arial, sans-serif;
+            color: #333;
+            white-space: nowrap;
+            line-height: 1;
+        }
+
+        .data-preview.text {
+            color: #000;
+            font-weight: normal;
+        }
+
+        .data-preview.conditional {
+            color: #000;
+            font-weight: normal;
+            font-size: 16px;
+        }
+
+        .data-preview.image-preview {
+            border: 2px solid #4caf50;
+            background: rgba(76, 175, 80, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+        }
+
+        .data-preview.shape-preview {
+            pointer-events: none;
+        }
+
+        .data-preview-label {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            white-space: nowrap;
+            transform: translate(-50%, -100%);
+            margin-top: -5px;
+            z-index: 1001;
         }
 
         /* Configuration Section */
@@ -458,6 +508,26 @@
             color: white;
         }
 
+        .preview-toggle {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .preview-toggle label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .preview-toggle input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
         .image-upload-area {
             border: 2px dashed #4caf50;
             padding: 20px;
@@ -601,6 +671,14 @@
                     <div id="modeInstructions" class="click-instruction">
                         <strong>Text Mode:</strong> Click on the PDF to add text variables at specific positions.
                     </div>
+                    
+                    <!-- Preview Toggle -->
+                    <div class="preview-toggle">
+                        <label>
+                            <input type="checkbox" id="showDataPreview" checked>
+                            <strong>Show Data Preview</strong> - Display actual sample data at coordinates
+                        </label>
+                    </div>
                 </div>
 
                 <!-- Image Upload Section -->
@@ -663,7 +741,8 @@
                     <h3>🔧 Process PDF</h3>
                     <div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin-bottom: 10px; font-size: 0.85rem;">
                         🎯 <strong>Tips:</strong> Click the center of elements for precise positioning. Different modes place different overlay types.
-                        <br>• Blue dots = Text positions | Green dots = Image positions | Orange dots = Shape positions
+                        <br>• Preview shows actual data from sample JSON at exact positions
+                        <br>• Toggle "Show Data Preview" to switch between dots and data
                     </div>
                     <button class="btn btn-block" id="processBtn" disabled>🚀 Process PDF with All Overlays</button>
                     <div class="loading" id="processLoading">
@@ -722,6 +801,7 @@
         let uploadedImages = [];
         let lineDrawingState = null;
         let tempLineStart = null;
+        let showDataPreview = true;
 
         // Initialize PDF.js
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -763,6 +843,7 @@
         const testImagesBtn = document.getElementById('testImagesBtn');
         const testCoordsBtn = document.getElementById('testCoordsBtn');
         const debugServerBtn = document.getElementById('debugServerBtn');
+        const showDataPreviewCheckbox = document.getElementById('showDataPreview');
 
         // Event listeners
         uploadArea.addEventListener('click', () => pdfInput.click());
@@ -785,6 +866,14 @@
         testImagesBtn.addEventListener('click', testImageAccessibility);
         testCoordsBtn.addEventListener('click', testCoordinateSystem);
         debugServerBtn.addEventListener('click', debugServerEnvironment);
+        showDataPreviewCheckbox.addEventListener('change', (e) => {
+            showDataPreview = e.target.checked;
+            renderAllOverlays();
+        });
+        sampleData.addEventListener('input', () => {
+            // Re-render overlays when sample data changes
+            renderAllOverlays();
+        });
 
         // Enhanced coordinate conversion with environment-specific adjustments
         function canvasToPDFCoordinates(canvasX, canvasY, pageNum) {
@@ -821,6 +910,16 @@
             const canvasY = Math.round((pdfPageDim.height - pdfY) * scaleY);
             
             return { x: canvasX, y: canvasY };
+        }
+
+        // Function to get sample data value for a variable
+        function getSampleDataValue(variableName) {
+            try {
+                const data = JSON.parse(sampleData.value || '{}');
+                return data[variableName] || variableName;
+            } catch (e) {
+                return variableName;
+            }
         }
 
         // Function to create server-environment-aware coordinate adjustments
@@ -1126,7 +1225,7 @@
         }
 
         function renderAllOverlays() {
-            const existingOverlays = pdfViewer.querySelectorAll('.text-overlay, .image-overlay, .shape-overlay, .coordinate-dot');
+            const existingOverlays = pdfViewer.querySelectorAll('.text-overlay, .image-overlay, .shape-overlay, .coordinate-dot, .data-preview, .data-preview-label');
             existingOverlays.forEach(element => element.remove());
 
             const canvasRect = pdfCanvas.getBoundingClientRect();
@@ -1140,36 +1239,99 @@
                 if (variable.type === 'simple') {
                     const canvasCoords = pdfToCanvasCoordinates(variable.x, variable.y, currentPage);
 
-                    const overlay = document.createElement('div');
-                    overlay.className = 'text-overlay';
-                    overlay.textContent = `${variable.name} (${variable.x}, ${variable.y})`;
-                    overlay.style.left = (canvasCoords.x + offsetX) + 'px';
-                    overlay.style.top = (canvasCoords.y + offsetY - 10) + 'px';
-                    pdfViewer.appendChild(overlay);
+                    if (showDataPreview) {
+                        // Show actual data preview
+                        const dataValue = getSampleDataValue(variable.name);
+                        
+                        const dataPreview = document.createElement('div');
+                        dataPreview.className = 'data-preview text';
+                        dataPreview.textContent = dataValue;
+                        // Adjust position to match PDF text baseline
+                        // PDF text is rendered from baseline, not top
+                        const baselineAdjustment = variable.fontSize * 0.6; // Approximate baseline position
+                        dataPreview.style.left = (canvasCoords.x + offsetX) + 'px';
+                        dataPreview.style.top = (canvasCoords.y + offsetY - baselineAdjustment - 10) + 'px';
+                        // Adjust font size to match PDF rendering (PDF points to CSS pixels)
+                        // PDF renders at 72 DPI, browsers typically at 96 DPI
+                        const adjustedFontSize = variable.fontSize + 7; // Compensation factor
+                        dataPreview.style.fontSize = adjustedFontSize + 'px';
+                        dataPreview.style.fontFamily = 'Arial, sans-serif';
+                        dataPreview.style.transformOrigin = 'left top';
+                        pdfViewer.appendChild(dataPreview);
 
-                    const dot = document.createElement('div');
-                    dot.className = 'coordinate-dot simple';
-                    dot.style.left = (canvasCoords.x + offsetX) + 'px';
-                    dot.style.top = (canvasCoords.y + offsetY) + 'px';
-                    pdfViewer.appendChild(dot);
-
-                } else if (variable.type === 'conditional') {
-                    variable.conditionalCoordinates.forEach((cond, index) => {
-                        const canvasCoords = pdfToCanvasCoordinates(cond.x, cond.y, currentPage);
-
+                        // Add label
+                        const label = document.createElement('div');
+                        label.className = 'data-preview-label';
+                        label.textContent = `${variable.name} (${variable.x}, ${variable.y})`;
+                        label.style.left = (canvasCoords.x + offsetX) + 'px';
+                        label.style.top = (canvasCoords.y + offsetY - baselineAdjustment - 15) + 'px';
+                        pdfViewer.appendChild(label);
+                    } else {
+                        // Show dots and overlays
                         const overlay = document.createElement('div');
                         overlay.className = 'text-overlay';
-                        overlay.style.background = 'rgba(255, 152, 0, 0.8)';
-                        overlay.textContent = `${variable.name}[${cond.if_value || '?'}] (${cond.x}, ${cond.y})`;
+                        overlay.textContent = `${variable.name} (${variable.x}, ${variable.y})`;
                         overlay.style.left = (canvasCoords.x + offsetX) + 'px';
                         overlay.style.top = (canvasCoords.y + offsetY - 10) + 'px';
                         pdfViewer.appendChild(overlay);
 
                         const dot = document.createElement('div');
-                        dot.className = 'coordinate-dot conditional';
+                        dot.className = 'coordinate-dot simple';
                         dot.style.left = (canvasCoords.x + offsetX) + 'px';
                         dot.style.top = (canvasCoords.y + offsetY) + 'px';
                         pdfViewer.appendChild(dot);
+                    }
+
+                } else if (variable.type === 'conditional') {
+                    const actualValue = getSampleDataValue(variable.name);
+                    
+                    variable.conditionalCoordinates.forEach((cond, index) => {
+                        const canvasCoords = pdfToCanvasCoordinates(cond.x, cond.y, currentPage);
+
+                        if (showDataPreview) {
+                            // Show pattern only if condition matches
+                            const shouldShowPattern = (actualValue === cond.if_value) || 
+                                                    (actualValue && actualValue.toString() === cond.if_value) ||
+                                                    (cond.if_value && actualValue === cond.if_value.toString());
+                            
+                            if (shouldShowPattern) {
+                                const dataPreview = document.createElement('div');
+                                dataPreview.className = 'data-preview conditional';
+                                dataPreview.textContent = cond.print_pattern || '*';
+                                const baselineAdjustment = 16 * 0.8;
+                                dataPreview.style.left = (canvasCoords.x + offsetX + 1.5) + 'px';
+                                dataPreview.style.top = (canvasCoords.y + offsetY - baselineAdjustment - 2.5) + 'px';
+                                // Apply same font size adjustment for conditional patterns
+                                dataPreview.style.fontSize = (16 * 0.85) + 'px';
+                                dataPreview.style.fontFamily = 'Arial, sans-serif';
+                                dataPreview.style.color = '#000';
+                                pdfViewer.appendChild(dataPreview);
+                            }
+
+                            // Add label showing condition and whether it's active
+                            const label = document.createElement('div');
+                            label.className = 'data-preview-label';
+                            const isActive = shouldShowPattern ? ' ✓' : '';
+                            label.textContent = `${variable.name}[${cond.if_value}]${isActive}`;
+                            label.style.left = (canvasCoords.x + offsetX) + 'px';
+                            label.style.top = (canvasCoords.y + offsetY - 25) + 'px';
+                            pdfViewer.appendChild(label);
+                        } else {
+                            // Show dots and overlays
+                            const overlay = document.createElement('div');
+                            overlay.className = 'text-overlay';
+                            overlay.style.background = 'rgba(255, 152, 0, 0.8)';
+                            overlay.textContent = `${variable.name}[${cond.if_value || '?'}] (${cond.x}, ${cond.y})`;
+                            overlay.style.left = (canvasCoords.x + offsetX) + 'px';
+                            overlay.style.top = (canvasCoords.y + offsetY - 10) + 'px';
+                            pdfViewer.appendChild(overlay);
+
+                            const dot = document.createElement('div');
+                            dot.className = 'coordinate-dot conditional';
+                            dot.style.left = (canvasCoords.x + offsetX) + 'px';
+                            dot.style.top = (canvasCoords.y + offsetY) + 'px';
+                            pdfViewer.appendChild(dot);
+                        }
                     });
                 }
             });
@@ -1179,18 +1341,41 @@
             currentPageImages.forEach(image => {
                 const canvasCoords = pdfToCanvasCoordinates(image.x, image.y, currentPage);
 
-                const overlay = document.createElement('div');
-                overlay.className = 'image-overlay';
-                overlay.textContent = `🖼️ ${image.name} (${image.width}x${image.height})`;
-                overlay.style.left = (canvasCoords.x + offsetX) + 'px';
-                overlay.style.top = (canvasCoords.y + offsetY - 10) + 'px';
-                pdfViewer.appendChild(overlay);
+                if (showDataPreview) {
+                    // Show image placeholder - FIXED: Adjust Y coordinate for image rendering
+                    const dataPreview = document.createElement('div');
+                    dataPreview.className = 'data-preview image-preview';
+                    dataPreview.style.left = (canvasCoords.x + offsetX) + 'px';
+                    // Images in PDF are positioned from bottom-left corner, need to adjust for height
+                    const adjustedCanvasHeight = image.height * pdfCanvas.height / pdfPageDimensions[currentPage].height;
+                    dataPreview.style.top = (canvasCoords.y + offsetY - adjustedCanvasHeight) + 'px';
+                    dataPreview.style.width = (image.width * pdfCanvas.width / pdfPageDimensions[currentPage].width) + 'px';
+                    dataPreview.style.height = adjustedCanvasHeight + 'px';
+                    dataPreview.innerHTML = `<span style="font-size: 10px;">🖼️ ${image.name}</span>`;
+                    pdfViewer.appendChild(dataPreview);
 
-                const dot = document.createElement('div');
-                dot.className = 'coordinate-dot image';
-                dot.style.left = (canvasCoords.x + offsetX) + 'px';
-                dot.style.top = (canvasCoords.y + offsetY) + 'px';
-                pdfViewer.appendChild(dot);
+                    // Add label
+                    const label = document.createElement('div');
+                    label.className = 'data-preview-label';
+                    label.textContent = `${image.name} (${image.width}x${image.height})`;
+                    label.style.left = (canvasCoords.x + offsetX) + 'px';
+                    label.style.top = (canvasCoords.y + offsetY + 5) + 'px';
+                    pdfViewer.appendChild(label);
+                } else {
+                    // Show dots and overlays
+                    const overlay = document.createElement('div');
+                    overlay.className = 'image-overlay';
+                    overlay.textContent = `🖼️ ${image.name} (${image.width}x${image.height})`;
+                    overlay.style.left = (canvasCoords.x + offsetX) + 'px';
+                    overlay.style.top = (canvasCoords.y + offsetY - 10) + 'px';
+                    pdfViewer.appendChild(overlay);
+
+                    const dot = document.createElement('div');
+                    dot.className = 'coordinate-dot image';
+                    dot.style.left = (canvasCoords.x + offsetX) + 'px';
+                    dot.style.top = (canvasCoords.y + offsetY) + 'px';
+                    pdfViewer.appendChild(dot);
+                }
             });
 
             // Render shapes
@@ -1198,18 +1383,54 @@
             currentPageShapes.forEach(shape => {
                 const canvasCoords = pdfToCanvasCoordinates(shape.x, shape.y, currentPage);
 
-                const overlay = document.createElement('div');
-                overlay.className = 'shape-overlay';
-                overlay.textContent = `${shape.type} (${shape.width || 'N/A'}x${shape.height || 'N/A'})`;
-                overlay.style.left = (canvasCoords.x + offsetX) + 'px';
-                overlay.style.top = (canvasCoords.y + offsetY - 10) + 'px';
-                pdfViewer.appendChild(overlay);
+                if (showDataPreview && shape.type !== 'line') {
+                    // Show shape preview - FIXED: Adjust positioning for shapes
+                    const dataPreview = document.createElement('div');
+                    dataPreview.className = 'data-preview shape-preview';
+                    dataPreview.style.position = 'absolute';
+                    
+                    if (shape.type === 'rectangle') {
+                        const shapeWidth = shape.width * pdfCanvas.width / pdfPageDimensions[currentPage].width;
+                        const shapeHeight = shape.height * pdfCanvas.height / pdfPageDimensions[currentPage].height;
+                        dataPreview.style.left = (canvasCoords.x + offsetX) + 'px';
+                        dataPreview.style.top = (canvasCoords.y + offsetY - shapeHeight) + 'px';
+                        dataPreview.style.width = shapeWidth + 'px';
+                        dataPreview.style.height = shapeHeight + 'px';
+                        dataPreview.style.border = `${shape.stroke_width}px solid ${shape.color}`;
+                        if (shape.fill) {
+                            dataPreview.style.backgroundColor = shape.color + '33'; // Add transparency
+                        }
+                    } else if (shape.type === 'circle') {
+                        const radius = shape.radius * pdfCanvas.width / pdfPageDimensions[currentPage].width;
+                        dataPreview.style.left = (canvasCoords.x + offsetX - radius) + 'px';
+                        dataPreview.style.top = (canvasCoords.y + offsetY - radius) + 'px';
+                        dataPreview.style.width = (radius * 2) + 'px';
+                        dataPreview.style.height = (radius * 2) + 'px';
+                        dataPreview.style.borderRadius = '50%';
+                        dataPreview.style.border = `${shape.stroke_width}px solid ${shape.color}`;
+                        if (shape.fill) {
+                            dataPreview.style.backgroundColor = shape.color + '33'; // Add transparency
+                        }
+                    }
+                    
+                    pdfViewer.appendChild(dataPreview);
+                }
 
-                const dot = document.createElement('div');
-                dot.className = 'coordinate-dot shape';
-                dot.style.left = (canvasCoords.x + offsetX) + 'px';
-                dot.style.top = (canvasCoords.y + offsetY) + 'px';
-                pdfViewer.appendChild(dot);
+                if (!showDataPreview || shape.type === 'line') {
+                    // Show dots and overlays for all shapes when preview is off, or always for lines
+                    const overlay = document.createElement('div');
+                    overlay.className = 'shape-overlay';
+                    overlay.textContent = `${shape.type} (${shape.width || 'N/A'}x${shape.height || 'N/A'})`;
+                    overlay.style.left = (canvasCoords.x + offsetX) + 'px';
+                    overlay.style.top = (canvasCoords.y + offsetY - 10) + 'px';
+                    pdfViewer.appendChild(overlay);
+
+                    const dot = document.createElement('div');
+                    dot.className = 'coordinate-dot shape';
+                    dot.style.left = (canvasCoords.x + offsetX) + 'px';
+                    dot.style.top = (canvasCoords.y + offsetY) + 'px';
+                    pdfViewer.appendChild(dot);
+                }
             });
         }
 
@@ -1541,7 +1762,7 @@
 
                 updateVariablesList();
                 updateConfiguration();
-                if (field === 'x' || field === 'y' || field === 'page') {
+                if (field === 'x' || field === 'y' || field === 'page' || field === 'fontSize') {
                     renderAllOverlays();
                 }
             }
@@ -1557,7 +1778,7 @@
 
                 updateImagesList();
                 updateConfiguration();
-                if (field === 'x' || field === 'y' || field === 'page') {
+                if (field === 'x' || field === 'y' || field === 'page' || field === 'width' || field === 'height') {
                     renderAllOverlays();
                 }
             }
@@ -1690,11 +1911,24 @@
                     `;
                 }
 
+                // Show current sample data value for conditional variables
+                const currentValue = getSampleDataValue(variable.name);
+                const dataPreviewHtml = variable.type === 'conditional' ? 
+                    `<div style="background: #d4edda; padding: 5px; border-radius: 3px; margin-bottom: 10px; font-size: 0.85rem;">
+                        <strong>Current Value:</strong> "${currentValue}"
+                        <br><small>Pattern will show for matching conditions</small>
+                    </div>` : 
+                    (currentValue !== variable.name ? 
+                    `<div style="background: #d4edda; padding: 5px; border-radius: 3px; margin-bottom: 10px; font-size: 0.85rem;">
+                        <strong>Preview:</strong> ${currentValue}
+                    </div>` : '');
+
                 div.innerHTML = `
                     <div class="variable-header">
                         <strong>Variable ${index + 1}</strong>
                         <button class="remove-btn" onclick="removeVariable(${index})">Remove</button>
                     </div>
+                    ${dataPreviewHtml}
                     <div class="form-group">
                         <label>Variable Name:</label>
                         <input type="text" class="form-control" value="${variable.name}" 
@@ -1713,19 +1947,6 @@
                             <strong>📍 Coordinates</strong>
                             <br>Page: ${variable.page} (Config: ${variable.page - 1})
                             <br>PDF Position: X=${variable.x}, Y=${variable.y}
-                            <br><strong>🔄 Coordinate System Info:</strong>
-                            <br>PDF uses bottom-left origin (0,0)
-                            <br>Canvas uses top-left origin (0,0)
-                            <br>Y-axis conversion: PDF_Y = PageHeight - Canvas_Y
-                        </div>
-                        <div class="coordinate-debug">
-                            <strong>🔧 Debug Info:</strong>
-                            <br>Canvas Size: ${pdfCanvas ? pdfCanvas.width + 'x' + pdfCanvas.height : 'N/A'}
-                            <br>PDF Size: ${pdfPageDimensions[variable.page] ? pdfPageDimensions[variable.page].width + 'x' + pdfPageDimensions[variable.page].height : 'N/A'}
-                            <br>Scale Factors: ${pdfCanvas && pdfPageDimensions[variable.page] ? 
-                                `X=${(pdfPageDimensions[variable.page].width / pdfCanvas.width).toFixed(3)}, Y=${(pdfPageDimensions[variable.page].height / pdfCanvas.height).toFixed(3)}` : 'N/A'}
-                            <br><strong>Verification:</strong> Canvas Y → PDF Y conversion
-                            <br>For center click: Canvas_Y ≈ ${pdfCanvas ? Math.round(pdfCanvas.height/2) : 'N/A'} → PDF_Y ≈ ${pdfPageDimensions[variable.page] ? Math.round(pdfPageDimensions[variable.page].height/2) : 'N/A'}
                         </div>
                         <div class="form-group">
                             <label>Page Number:</label>
@@ -1941,14 +2162,6 @@
                         </select>
                         ${shape.type === 'line' ? '<small style="color: #666;">Lines cannot be filled</small>' : ''}
                     </div>
-                    ${shape.type === 'line' ? `
-                        <div style="margin-top: 15px; padding: 10px; background: #e3f2fd; border-radius: 5px;">
-                            <small><strong>💡 Line Tips:</strong> 
-                            <br>• Use "Shape Mode" and select "Line (two-point)" for interactive drawing
-                            <br>• Click twice on PDF: first for start point, second for end point
-                            <br>• Manually adjust coordinates above for precise positioning</small>
-                        </div>
-                    ` : ''}
                 `;
                 shapesList.appendChild(div);
             });
@@ -1980,8 +2193,8 @@
                     
                     pageGroups[zeroBasedPage].variables.push({
                         name: variable.name,
-                        "x-coordinate": variable.x - 4,
-                        "y-coordinate": adjustedY - 5,
+                        "x-coordinate": variable.x,
+                        "y-coordinate": adjustedY,
                         font_size: variable.fontSize
                     });
                 } else if (variable.type === 'conditional') {
@@ -1990,8 +2203,8 @@
                         conditional_coordinates: variable.conditionalCoordinates.map(cond => ({
                             if_value: cond.if_value,
                             print_pattern: cond.print_pattern,
-                            "x-coordinate": cond.x - 2,
-                            "y-coordinate": cond.y - 5
+                            "x-coordinate": cond.x,
+                            "y-coordinate": cond.y
                         }))
                     };
                     pageGroups[zeroBasedPage].variables.push(conditionalVar);
@@ -2036,8 +2249,8 @@
                         g: parseFloat(g.toFixed(3)),
                         b: parseFloat(b.toFixed(3)),
                         shape: shape.type.charAt(0).toUpperCase() + shape.type.slice(1),
-                        'x0-coordinate': parseFloat(x0_inches.toFixed(3) - 1),
-                        'y0-coordinate': parseFloat(y0_inches.toFixed(3) - 1)
+                        'x0-coordinate': parseFloat(x0_inches.toFixed(3)),
+                        'y0-coordinate': parseFloat(y0_inches.toFixed(3))
                     }
                 };
 
@@ -2049,8 +2262,8 @@
                     shapeConfig.draw_shape['x1-coordinate'] = parseFloat((x0_inches + radiusInches).toFixed(3));
                     shapeConfig.draw_shape['y1-coordinate'] = parseFloat((y0_inches + radiusInches).toFixed(3));
                 } else if (shape.type === 'line') {
-                    shapeConfig.draw_shape['x1-coordinate'] = parseFloat((shape.end_x / 72.0).toFixed(3) - 1);
-                    shapeConfig.draw_shape['y1-coordinate'] = parseFloat((shape.end_y / 72.0).toFixed(3) - 1);
+                    shapeConfig.draw_shape['x1-coordinate'] = parseFloat((shape.end_x / 72.0).toFixed(3));
+                    shapeConfig.draw_shape['y1-coordinate'] = parseFloat((shape.end_y / 72.0).toFixed(3));
                 }
 
                 pageGroups[zeroBasedPage].variables.push(shapeConfig);
@@ -2061,31 +2274,7 @@
                 variables: pageGroups[page].variables
             }));
 
-            // Add metadata for debugging server environment differences
-            const configurationWithMeta = {
-                _metadata: {
-                    client_info: {
-                        user_agent: navigator.userAgent,
-                        viewport: {
-                            width: window.innerWidth,
-                            height: window.innerHeight
-                        },
-                        pdf_dimensions: pdfPageDimensions,
-                        canvas_dimensions: pdfCanvas ? {
-                            width: pdfCanvas.width,
-                            height: pdfCanvas.height
-                        } : null,
-                        coordinate_system: "bottom_left_origin",
-                        generated_at: new Date().toISOString()
-                    }
-                },
-                configuration: configuration
-            };
-
             configOutput.textContent = JSON.stringify(configuration, null, 2);
-            
-            // Store full metadata for debugging (not visible in config output)
-            window.debugConfig = configurationWithMeta;
         }
 
         function loadFromConfiguration() {
@@ -2292,6 +2481,7 @@
             });
 
             sampleData.value = JSON.stringify(sampleObj, null, 2);
+            renderAllOverlays(); // Re-render to show new data
             showNotification('Sample data generated with actual uploaded image URLs!');
         }
 
