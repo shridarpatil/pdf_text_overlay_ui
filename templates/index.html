@@ -186,7 +186,6 @@
 
         .coordinate-dot.simple {
             background-color: #667eea;
-            /* Position dot at baseline */
             margin-top: -4px;
         }
 
@@ -871,7 +870,6 @@
             renderAllOverlays();
         });
         sampleData.addEventListener('input', () => {
-            // Re-render overlays when sample data changes
             renderAllOverlays();
         });
 
@@ -879,13 +877,9 @@
         function canvasToPDFCoordinates(canvasX, canvasY, pageNum) {
             const pdfPageDim = pdfPageDimensions[pageNum] || { width: 612, height: 792 };
             
-            // Calculate scale factors
             const scaleX = pdfPageDim.width / pdfCanvas.width;
             const scaleY = pdfPageDim.height / pdfCanvas.height;
             
-            // Convert canvas coordinates to PDF coordinates
-            // Canvas: (0,0) = top-left, Y increases downward
-            // PDF: (0,0) = bottom-left, Y increases upward
             const pdfX = Math.round(canvasX * scaleX);
             const pdfY = Math.round(pdfPageDim.height - (canvasY * scaleY));
             
@@ -899,13 +893,9 @@
         function pdfToCanvasCoordinates(pdfX, pdfY, pageNum) {
             const pdfPageDim = pdfPageDimensions[pageNum] || { width: 612, height: 792 };
             
-            // Calculate scale factors
             const scaleX = pdfCanvas.width / pdfPageDim.width;
             const scaleY = pdfCanvas.height / pdfPageDim.height;
             
-            // Convert PDF coordinates to canvas coordinates
-            // PDF: (0,0) = bottom-left, Y increases upward
-            // Canvas: (0,0) = top-left, Y increases downward
             const canvasX = Math.round(pdfX * scaleX);
             const canvasY = Math.round((pdfPageDim.height - pdfY) * scaleY);
             
@@ -924,10 +914,8 @@
 
         // Function to create server-environment-aware coordinate adjustments
         function createServerAwareConfiguration(baseConfig) {
-            // Create different coordinate adjustments for different server environments
-            const adjustedConfig = JSON.parse(JSON.stringify(baseConfig)); // deep copy
+            const adjustedConfig = JSON.parse(JSON.stringify(baseConfig));
             
-            // Add adjustment metadata for server processing
             adjustedConfig._coordinate_adjustments = {
                 client_environment: {
                     user_agent: navigator.userAgent,
@@ -936,9 +924,9 @@
                     canvas_scale: scale
                 },
                 adjustment_requests: {
-                    ubuntu_y_offset: true,  // Request Ubuntu-specific Y offset
-                    fedora_compatibility: true,  // Maintain Fedora compatibility
-                    precise_positioning: true  // Request high precision positioning
+                    ubuntu_y_offset: true,
+                    fedora_compatibility: true,
+                    precise_positioning: true
                 }
             };
             
@@ -1042,7 +1030,7 @@
             }
         }
 
-        // Image handling functions (keeping existing functionality)
+        // Image handling functions
         async function handleImageUpload(e) {
             const files = Array.from(e.target.files);
             
@@ -1240,26 +1228,20 @@
                     const canvasCoords = pdfToCanvasCoordinates(variable.x, variable.y, currentPage);
 
                     if (showDataPreview) {
-                        // Show actual data preview
                         const dataValue = getSampleDataValue(variable.name);
                         
                         const dataPreview = document.createElement('div');
                         dataPreview.className = 'data-preview text';
                         dataPreview.textContent = dataValue;
-                        // Adjust position to match PDF text baseline
-                        // PDF text is rendered from baseline, not top
-                        const baselineAdjustment = variable.fontSize * 0.6; // Approximate baseline position
+                        const baselineAdjustment = variable.fontSize * 0.6;
                         dataPreview.style.left = (canvasCoords.x + offsetX) + 'px';
                         dataPreview.style.top = (canvasCoords.y + offsetY - baselineAdjustment - 10) + 'px';
-                        // Adjust font size to match PDF rendering (PDF points to CSS pixels)
-                        // PDF renders at 72 DPI, browsers typically at 96 DPI
-                        const adjustedFontSize = variable.fontSize + 7; // Compensation factor
+                        const adjustedFontSize = variable.fontSize + 7;
                         dataPreview.style.fontSize = adjustedFontSize + 'px';
                         dataPreview.style.fontFamily = 'Arial, sans-serif';
                         dataPreview.style.transformOrigin = 'left top';
                         pdfViewer.appendChild(dataPreview);
 
-                        // Add label
                         const label = document.createElement('div');
                         label.className = 'data-preview-label';
                         label.textContent = `${variable.name} (${variable.x}, ${variable.y})`;
@@ -1267,7 +1249,6 @@
                         label.style.top = (canvasCoords.y + offsetY - baselineAdjustment - 15) + 'px';
                         pdfViewer.appendChild(label);
                     } else {
-                        // Show dots and overlays
                         const overlay = document.createElement('div');
                         overlay.className = 'text-overlay';
                         overlay.textContent = `${variable.name} (${variable.x}, ${variable.y})`;
@@ -1289,7 +1270,6 @@
                         const canvasCoords = pdfToCanvasCoordinates(cond.x, cond.y, currentPage);
 
                         if (showDataPreview) {
-                            // Show pattern only if condition matches
                             const shouldShowPattern = (actualValue === cond.if_value) || 
                                                     (actualValue && actualValue.toString() === cond.if_value) ||
                                                     (cond.if_value && actualValue === cond.if_value.toString());
@@ -1301,14 +1281,12 @@
                                 const baselineAdjustment = 16 * 0.8;
                                 dataPreview.style.left = (canvasCoords.x + offsetX + 1.5) + 'px';
                                 dataPreview.style.top = (canvasCoords.y + offsetY - baselineAdjustment - 2.5) + 'px';
-                                // Apply same font size adjustment for conditional patterns
                                 dataPreview.style.fontSize = (16 * 0.85) + 'px';
                                 dataPreview.style.fontFamily = 'Arial, sans-serif';
                                 dataPreview.style.color = '#000';
                                 pdfViewer.appendChild(dataPreview);
                             }
 
-                            // Add label showing condition and whether it's active
                             const label = document.createElement('div');
                             label.className = 'data-preview-label';
                             const isActive = shouldShowPattern ? ' ✓' : '';
@@ -1317,7 +1295,6 @@
                             label.style.top = (canvasCoords.y + offsetY - 25) + 'px';
                             pdfViewer.appendChild(label);
                         } else {
-                            // Show dots and overlays
                             const overlay = document.createElement('div');
                             overlay.className = 'text-overlay';
                             overlay.style.background = 'rgba(255, 152, 0, 0.8)';
@@ -1342,11 +1319,9 @@
                 const canvasCoords = pdfToCanvasCoordinates(image.x, image.y, currentPage);
 
                 if (showDataPreview) {
-                    // Show image placeholder - FIXED: Adjust Y coordinate for image rendering
                     const dataPreview = document.createElement('div');
                     dataPreview.className = 'data-preview image-preview';
                     dataPreview.style.left = (canvasCoords.x + offsetX) + 'px';
-                    // Images in PDF are positioned from bottom-left corner, need to adjust for height
                     const adjustedCanvasHeight = image.height * pdfCanvas.height / pdfPageDimensions[currentPage].height;
                     dataPreview.style.top = (canvasCoords.y + offsetY - adjustedCanvasHeight) + 'px';
                     dataPreview.style.width = (image.width * pdfCanvas.width / pdfPageDimensions[currentPage].width) + 'px';
@@ -1354,7 +1329,6 @@
                     dataPreview.innerHTML = `<span style="font-size: 10px;">🖼️ ${image.name}</span>`;
                     pdfViewer.appendChild(dataPreview);
 
-                    // Add label
                     const label = document.createElement('div');
                     label.className = 'data-preview-label';
                     label.textContent = `${image.name} (${image.width}x${image.height})`;
@@ -1362,7 +1336,6 @@
                     label.style.top = (canvasCoords.y + offsetY + 5) + 'px';
                     pdfViewer.appendChild(label);
                 } else {
-                    // Show dots and overlays
                     const overlay = document.createElement('div');
                     overlay.className = 'image-overlay';
                     overlay.textContent = `🖼️ ${image.name} (${image.width}x${image.height})`;
@@ -1384,7 +1357,6 @@
                 const canvasCoords = pdfToCanvasCoordinates(shape.x, shape.y, currentPage);
 
                 if (showDataPreview && shape.type !== 'line') {
-                    // Show shape preview - FIXED: Adjust positioning for shapes
                     const dataPreview = document.createElement('div');
                     dataPreview.className = 'data-preview shape-preview';
                     dataPreview.style.position = 'absolute';
@@ -1398,7 +1370,7 @@
                         dataPreview.style.height = shapeHeight + 'px';
                         dataPreview.style.border = `${shape.stroke_width}px solid ${shape.color}`;
                         if (shape.fill) {
-                            dataPreview.style.backgroundColor = shape.color + '33'; // Add transparency
+                            dataPreview.style.backgroundColor = shape.color + '33';
                         }
                     } else if (shape.type === 'circle') {
                         const radius = shape.radius * pdfCanvas.width / pdfPageDimensions[currentPage].width;
@@ -1409,7 +1381,7 @@
                         dataPreview.style.borderRadius = '50%';
                         dataPreview.style.border = `${shape.stroke_width}px solid ${shape.color}`;
                         if (shape.fill) {
-                            dataPreview.style.backgroundColor = shape.color + '33'; // Add transparency
+                            dataPreview.style.backgroundColor = shape.color + '33';
                         }
                     }
                     
@@ -1417,7 +1389,6 @@
                 }
 
                 if (!showDataPreview || shape.type === 'line') {
-                    // Show dots and overlays for all shapes when preview is off, or always for lines
                     const overlay = document.createElement('div');
                     overlay.className = 'shape-overlay';
                     overlay.textContent = `${shape.type} (${shape.width || 'N/A'}x${shape.height || 'N/A'})`;
@@ -1911,7 +1882,6 @@
                     `;
                 }
 
-                // Show current sample data value for conditional variables
                 const currentValue = getSampleDataValue(variable.name);
                 const dataPreviewHtml = variable.type === 'conditional' ? 
                     `<div style="background: #d4edda; padding: 5px; border-radius: 3px; margin-bottom: 10px; font-size: 0.85rem;">
@@ -1932,7 +1902,8 @@
                     <div class="form-group">
                         <label>Variable Name:</label>
                         <input type="text" class="form-control" value="${variable.name}" 
-                               onchange="updateVariable(${index}, 'name', this.value)">
+                               onchange="updateVariable(${index}, 'name', this.value)"
+                               oninput="updateVariable(${index}, 'name', this.value)">
                     </div>
                     <div class="form-group">
                         <label>Variable Type:</label>
@@ -1951,24 +1922,28 @@
                         <div class="form-group">
                             <label>Page Number:</label>
                             <input type="number" class="form-control" value="${variable.page}" min="1" max="${totalPages || 999}"
-                                   onchange="updateVariable(${index}, 'page', this.value)">
+                                   onchange="updateVariable(${index}, 'page', this.value)"
+                                   oninput="updateVariable(${index}, 'page', this.value)">
                         </div>
                         <div style="display: flex; gap: 10px;">
                             <div class="form-group" style="flex: 1;">
                                 <label>X Coordinate (PDF):</label>
                                 <input type="number" class="form-control" value="${variable.x}"
-                                       onchange="updateVariable(${index}, 'x', this.value)">
+                                       onchange="updateVariable(${index}, 'x', this.value)"
+                                       oninput="updateVariable(${index}, 'x', this.value)">
                             </div>
                             <div class="form-group" style="flex: 1;">
                                 <label>Y Coordinate (PDF):</label>
                                 <input type="number" class="form-control" value="${variable.y}"
-                                       onchange="updateVariable(${index}, 'y', this.value)">
+                                       onchange="updateVariable(${index}, 'y', this.value)"
+                                       oninput="updateVariable(${index}, 'y', this.value)">
                             </div>
                         </div>
                         <div class="form-group">
                             <label>Font Size:</label>
                             <input type="number" class="form-control" value="${variable.fontSize}" min="6" max="72"
-                                   onchange="updateVariable(${index}, 'fontSize', this.value)">
+                                   onchange="updateVariable(${index}, 'fontSize', this.value)"
+                                   oninput="updateVariable(${index}, 'fontSize', this.value)">
                         </div>
                     ` : ''}
 
@@ -2006,7 +1981,8 @@
                         <label>Variable Name:</label>
                         <input type="text" class="form-control" value="${image.name}" 
                                placeholder="e.g., logo, signature"
-                               onchange="updateImage(${index}, 'name', this.value)">
+                               onchange="updateImage(${index}, 'name', this.value)"
+                               oninput="updateImage(${index}, 'name', this.value)">
                     </div>
                     <div class="form-group">
                         <label>Reference Image File:</label>
@@ -2020,30 +1996,35 @@
                     <div class="form-group">
                         <label>Page Number:</label>
                         <input type="number" class="form-control" value="${image.page}" min="1" max="${totalPages || 999}"
-                               onchange="updateImage(${index}, 'page', this.value)">
+                               onchange="updateImage(${index}, 'page', this.value)"
+                               oninput="updateImage(${index}, 'page', this.value)">
                     </div>
                     <div style="display: flex; gap: 10px;">
                         <div class="form-group" style="flex: 1;">
                             <label>X Coordinate (PDF):</label>
                             <input type="number" class="form-control" value="${image.x}"
-                                   onchange="updateImage(${index}, 'x', this.value)">
+                                   onchange="updateImage(${index}, 'x', this.value)"
+                                   oninput="updateImage(${index}, 'x', this.value)">
                         </div>
                         <div class="form-group" style="flex: 1;">
                             <label>Y Coordinate (PDF):</label>
                             <input type="number" class="form-control" value="${image.y}"
-                                   onchange="updateImage(${index}, 'y', this.value)">
+                                   onchange="updateImage(${index}, 'y', this.value)"
+                                   oninput="updateImage(${index}, 'y', this.value)">
                         </div>
                     </div>
                     <div style="display: flex; gap: 10px;">
                         <div class="form-group" style="flex: 1;">
                             <label>Width:</label>
                             <input type="number" class="form-control" value="${image.width}" min="10"
-                                   onchange="updateImage(${index}, 'width', this.value)">
+                                   onchange="updateImage(${index}, 'width', this.value)"
+                                   oninput="updateImage(${index}, 'width', this.value)">
                         </div>
                         <div class="form-group" style="flex: 1;">
                             <label>Height:</label>
                             <input type="number" class="form-control" value="${image.height}" min="10"
-                                   onchange="updateImage(${index}, 'height', this.value)">
+                                   onchange="updateImage(${index}, 'height', this.value)"
+                                   oninput="updateImage(${index}, 'height', this.value)">
                         </div>
                     </div>
                 `;
@@ -2068,7 +2049,8 @@
                         <div class="form-group">
                             <label>Radius:</label>
                             <input type="number" class="form-control" value="${shape.radius || 25}" min="5"
-                                   onchange="updateShape(${index}, 'radius', this.value)">
+                                   onchange="updateShape(${index}, 'radius', this.value)"
+                                   oninput="updateShape(${index}, 'radius', this.value)">
                         </div>
                     `;
                 } else if (shape.type === 'line') {
@@ -2077,12 +2059,14 @@
                             <div class="form-group" style="flex: 1;">
                                 <label>End X (PDF):</label>
                                 <input type="number" class="form-control" value="${shape.end_x || shape.x + 50}"
-                                       onchange="updateShape(${index}, 'end_x', this.value)">
+                                       onchange="updateShape(${index}, 'end_x', this.value)"
+                                       oninput="updateShape(${index}, 'end_x', this.value)">
                             </div>
                             <div class="form-group" style="flex: 1;">
                                 <label>End Y (PDF):</label>
                                 <input type="number" class="form-control" value="${shape.end_y || shape.y}"
-                                       onchange="updateShape(${index}, 'end_y', this.value)">
+                                       onchange="updateShape(${index}, 'end_y', this.value)"
+                                       oninput="updateShape(${index}, 'end_y', this.value)">
                             </div>
                         </div>
                     `;
@@ -2092,12 +2076,14 @@
                             <div class="form-group" style="flex: 1;">
                                 <label>Width:</label>
                                 <input type="number" class="form-control" value="${shape.width}" min="5"
-                                       onchange="updateShape(${index}, 'width', this.value)">
+                                       onchange="updateShape(${index}, 'width', this.value)"
+                                       oninput="updateShape(${index}, 'width', this.value)">
                             </div>
                             <div class="form-group" style="flex: 1;">
                                 <label>Height:</label>
                                 <input type="number" class="form-control" value="${shape.height}" min="5"
-                                       onchange="updateShape(${index}, 'height', this.value)">
+                                       onchange="updateShape(${index}, 'height', this.value)"
+                                       oninput="updateShape(${index}, 'height', this.value)">
                             </div>
                         </div>
                     `;
@@ -2127,18 +2113,21 @@
                     <div class="form-group">
                         <label>Page Number:</label>
                         <input type="number" class="form-control" value="${shape.page}" min="1" max="${totalPages || 999}"
-                               onchange="updateShape(${index}, 'page', this.value)">
+                               onchange="updateShape(${index}, 'page', this.value)"
+                               oninput="updateShape(${index}, 'page', this.value)">
                     </div>
                     <div style="display: flex; gap: 10px;">
                         <div class="form-group" style="flex: 1;">
                             <label>${shape.type === 'line' ? 'Start X (PDF)' : 'X Coordinate (PDF)'}:</label>
                             <input type="number" class="form-control" value="${shape.x}"
-                                   onchange="updateShape(${index}, 'x', this.value)">
+                                   onchange="updateShape(${index}, 'x', this.value)"
+                                   oninput="updateShape(${index}, 'x', this.value)">
                         </div>
                         <div class="form-group" style="flex: 1;">
                             <label>${shape.type === 'line' ? 'Start Y (PDF)' : 'Y Coordinate (PDF)'}:</label>
                             <input type="number" class="form-control" value="${shape.y}"
-                                   onchange="updateShape(${index}, 'y', this.value)">
+                                   onchange="updateShape(${index}, 'y', this.value)"
+                                   oninput="updateShape(${index}, 'y', this.value)">
                         </div>
                     </div>
                     ${shapeSpecificFields}
@@ -2146,12 +2135,14 @@
                         <div class="form-group" style="flex: 1;">
                             <label>Color:</label>
                             <input type="color" class="form-control" value="${shape.color}" style="height: 40px;"
-                                   onchange="updateShape(${index}, 'color', this.value)">
+                                   onchange="updateShape(${index}, 'color', this.value)"
+                                   oninput="updateShape(${index}, 'color', this.value)">
                         </div>
                         <div class="form-group" style="flex: 1;">
                             <label>Stroke Width:</label>
                             <input type="number" class="form-control" value="${shape.stroke_width}" min="1" max="10"
-                                   onchange="updateShape(${index}, 'stroke_width', this.value)">
+                                   onchange="updateShape(${index}, 'stroke_width', this.value)"
+                                   oninput="updateShape(${index}, 'stroke_width', this.value)">
                         </div>
                     </div>
                     <div class="form-group">
@@ -2171,10 +2162,9 @@
             }
         }
 
-        // Enhanced Flask backend coordinate adjustment for pdf_text_overlay library
         function updateConfiguration() {
             if (variables.length === 0 && images.length === 0 && shapes.length === 0) {
-                configOutput.textContent = 'Click on the PDF to start adding elements...';
+                configOutput.value = 'Click on the PDF to start adding elements...';
                 return;
             }
 
@@ -2187,8 +2177,6 @@
                 }
 
                 if (variable.type === 'simple') {
-                    // Apply server environment coordinate adjustment
-                    // The pdf_text_overlay library may need slight Y-coordinate adjustments
                     const adjustedY = variable.y;
                     
                     pageGroups[zeroBasedPage].variables.push({
@@ -2274,7 +2262,7 @@
                 variables: pageGroups[page].variables
             }));
 
-            configOutput.textContent = JSON.stringify(configuration, null, 2);
+            configOutput.value = JSON.stringify(configuration, null, 2);
         }
 
         function loadFromConfiguration() {
@@ -2388,8 +2376,9 @@
         }
 
         function copyConfiguration() {
-            if (configOutput.textContent && configOutput.textContent !== 'Click on the PDF to start adding elements...') {
-                navigator.clipboard.writeText(configOutput.textContent).then(() => {
+            const configText = configOutput.value || configOutput.textContent;
+            if (configText && configText !== 'Click on the PDF to start adding elements...') {
+                navigator.clipboard.writeText(configText).then(() => {
                     showNotification('Configuration copied to clipboard!');
                 });
             }
@@ -2404,7 +2393,7 @@
             const configName = prompt('Enter configuration name:', `config_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}`);
             if (!configName) return;
 
-            const configText = configOutput.textContent;
+            const configText = configOutput.value || configOutput.textContent;
             
             fetch('/api/save-config', {
                 method: 'POST',
@@ -2481,7 +2470,7 @@
             });
 
             sampleData.value = JSON.stringify(sampleObj, null, 2);
-            renderAllOverlays(); // Re-render to show new data
+            renderAllOverlays();
             showNotification('Sample data generated with actual uploaded image URLs!');
         }
 
@@ -2508,10 +2497,9 @@
             processBtn.disabled = true;
 
             try {
-                const configText = configOutput.textContent;
+                const configText = configOutput.value || configOutput.textContent;
                 const baseConfiguration = JSON.parse(configText);
                 
-                // Create server-environment-aware configuration
                 const serverAwareConfig = createServerAwareConfiguration(baseConfiguration);
 
                 const response = await fetch('/api/process', {
@@ -2520,9 +2508,9 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        configuration: baseConfiguration,  // Send base config
+                        configuration: baseConfiguration,
                         sample_data: parsedSampleData,
-                        coordinate_adjustments: serverAwareConfig._coordinate_adjustments  // Send adjustment requests separately
+                        coordinate_adjustments: serverAwareConfig._coordinate_adjustments
                     })
                 });
 
@@ -2535,7 +2523,6 @@
                     processedFilename = result.output_filename;
                     downloadSection.style.display = 'block';
                     
-                    // Show server environment info if available
                     if (result.server_adjustments_applied) {
                         console.log('Server adjustments applied:', result.coordinate_adjustments);
                         showNotification('✅ Server-specific coordinate adjustments applied for accuracy', 'success');
@@ -2643,11 +2630,9 @@ ${Math.abs(pdfCenter.x - expectedPdfCenter.x) < 5 && Math.abs(pdfCenter.y - expe
             showNotification('Running server environment debugging...', 'success');
 
             try {
-                // Test 1: Get PDF info from server
                 const pdfInfoResponse = await fetch('/api/pdf-info');
                 const pdfInfo = await pdfInfoResponse.json();
                 
-                // Test 2: Get coordinate system debug info
                 const debugInfo = {
                     client_environment: {
                         user_agent: navigator.userAgent,
@@ -2667,7 +2652,6 @@ ${Math.abs(pdfCenter.x - expectedPdfCenter.x) < 5 && Math.abs(pdfCenter.y - expe
                     coordinate_test: null
                 };
 
-                // Test 3: Coordinate consistency test
                 if (variables.length > 0) {
                     const testVar = variables[0];
                     const canvasCoords = pdfToCanvasCoordinates(testVar.x, testVar.y, testVar.page);
@@ -2684,7 +2668,6 @@ ${Math.abs(pdfCenter.x - expectedPdfCenter.x) < 5 && Math.abs(pdfCenter.y - expe
                     };
                 }
 
-                // Test 4: Send debug info to server
                 const debugResponse = await fetch('/api/debug-coordinates', {
                     method: 'POST',
                     headers: {
@@ -2699,7 +2682,6 @@ ${Math.abs(pdfCenter.x - expectedPdfCenter.x) < 5 && Math.abs(pdfCenter.y - expe
                     serverDebugResult = JSON.stringify(serverDebug, null, 2);
                 }
 
-                // Display comprehensive debug report
                 const debugReport = `
 🔧 SERVER ENVIRONMENT DEBUG REPORT
 ═══════════════════════════════════════════
@@ -2728,17 +2710,14 @@ ${serverDebugResult}
 
                 console.log(debugReport);
                 
-                // Save debug info to session for analysis
                 sessionStorage.setItem('pdf_coordinate_debug', JSON.stringify(debugInfo));
                 
-                // Show summary in notification
                 const dimensionMismatch = JSON.stringify(debugInfo.pdf_client_dimensions) !== JSON.stringify(debugInfo.pdf_server_dimensions);
                 showNotification(
                     `Debug complete! ${dimensionMismatch ? '⚠️ Dimension mismatch detected' : '✅ Dimensions match'}. Check console for full report.`,
                     dimensionMismatch ? 'error' : 'success'
                 );
 
-                // Option to download debug report
                 if (confirm('Would you like to download the debug report for analysis?')) {
                     const blob = new Blob([debugReport], { type: 'text/plain' });
                     const url = URL.createObjectURL(blob);
