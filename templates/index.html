@@ -1213,13 +1213,15 @@
         }
 
         function renderAllOverlays() {
+            // Remove all existing overlays
             const existingOverlays = pdfViewer.querySelectorAll('.text-overlay, .image-overlay, .shape-overlay, .coordinate-dot, .data-preview, .data-preview-label');
             existingOverlays.forEach(element => element.remove());
 
+            // Get the canvas position relative to the viewer for accurate positioning
             const canvasRect = pdfCanvas.getBoundingClientRect();
             const viewerRect = pdfViewer.getBoundingClientRect();
-            const offsetX = canvasRect.left - viewerRect.left;
-            const offsetY = canvasRect.top - viewerRect.top;
+            const offsetX = canvasRect.left - viewerRect.left + pdfViewer.scrollLeft;
+            const offsetY = canvasRect.top - viewerRect.top + pdfViewer.scrollTop;
 
             // Render text variables
             const currentPageVars = variables.filter(v => v.page === currentPage);
@@ -1229,26 +1231,34 @@
 
                     if (showDataPreview) {
                         const dataValue = getSampleDataValue(variable.name);
-                        
+
+                        // Create text preview element
                         const dataPreview = document.createElement('div');
                         dataPreview.className = 'data-preview text';
                         dataPreview.textContent = dataValue;
-                        const baselineAdjustment = variable.fontSize * 0.6;
+
+                        // Calculate proper positioning
+                        // Text baseline adjustment - PDF text is positioned at baseline, we need to adjust for that
+                        const fontSize = variable.fontSize || 12;
+                        const scaledFontSize = fontSize * scale;
+                        const baselineOffset = scaledFontSize * 0.8; // Typical baseline is about 80% of font height
+
                         dataPreview.style.left = (canvasCoords.x + offsetX) + 'px';
-                        dataPreview.style.top = (canvasCoords.y + offsetY - baselineAdjustment - 10) + 'px';
-                        const adjustedFontSize = variable.fontSize + 7;
-                        dataPreview.style.fontSize = adjustedFontSize + 'px';
+                        dataPreview.style.top = (canvasCoords.y + offsetY - baselineOffset) + 'px';
+                        dataPreview.style.fontSize = scaledFontSize + 'px';
                         dataPreview.style.fontFamily = 'Arial, sans-serif';
-                        dataPreview.style.transformOrigin = 'left top';
+                        dataPreview.style.transformOrigin = 'left bottom';
                         pdfViewer.appendChild(dataPreview);
 
+                        // Add label above the text
                         const label = document.createElement('div');
                         label.className = 'data-preview-label';
                         label.textContent = `${variable.name} (${variable.x}, ${variable.y})`;
                         label.style.left = (canvasCoords.x + offsetX) + 'px';
-                        label.style.top = (canvasCoords.y + offsetY - baselineAdjustment - 15) + 'px';
+                        label.style.top = (canvasCoords.y + offsetY - baselineOffset - 20) + 'px';
                         pdfViewer.appendChild(label);
                     } else {
+                        // Show coordinate dot and overlay
                         const overlay = document.createElement('div');
                         overlay.className = 'text-overlay';
                         overlay.textContent = `${variable.name} (${variable.x}, ${variable.y})`;
@@ -1278,13 +1288,19 @@
                                 const dataPreview = document.createElement('div');
                                 dataPreview.className = 'data-preview conditional';
                                 dataPreview.textContent = cond.print_pattern || '*';
-                                const baselineAdjustment = 16 * 0.8;
-                                dataPreview.style.left = (canvasCoords.x + offsetX + 1.5) + 'px';
-                                dataPreview.style.top = (canvasCoords.y + offsetY - baselineAdjustment - 2.5) + 'px';
-                                dataPreview.style.fontSize = (16 * 0.85) + 'px';
+
+                                // Conditional text usually has fixed size
+                                const conditionalFontSize = 16;
+                                const scaledFontSize = conditionalFontSize * scale;
+                                const baselineOffset = scaledFontSize * 0.8;
+
+                                dataPreview.style.left = (canvasCoords.x + offsetX) + 'px';
+                                dataPreview.style.top = (canvasCoords.y + offsetY - baselineOffset + 3) + 'px';
+                                dataPreview.style.fontSize = scaledFontSize + 'px';
                                 dataPreview.style.fontFamily = 'Arial, sans-serif';
-                                dataPreview.style.color = '#000';
                                 pdfViewer.appendChild(dataPreview);
+
+                                console.log(canvasCoords.y + offsetY - baselineOffset + 3, "dataPreview.style.top")
                             }
 
                             const label = document.createElement('div');
@@ -1292,21 +1308,24 @@
                             const isActive = shouldShowPattern ? ' ✓' : '';
                             label.textContent = `${variable.name}[${cond.if_value}]${isActive}`;
                             label.style.left = (canvasCoords.x + offsetX) + 'px';
-                            label.style.top = (canvasCoords.y + offsetY - 25) + 'px';
+                            label.style.top = (canvasCoords.y + offsetY - 23) + 'px';
                             pdfViewer.appendChild(label);
+
+
                         } else {
                             const overlay = document.createElement('div');
                             overlay.className = 'text-overlay';
                             overlay.style.background = 'rgba(255, 152, 0, 0.8)';
                             overlay.textContent = `${variable.name}[${cond.if_value || '?'}] (${cond.x}, ${cond.y})`;
                             overlay.style.left = (canvasCoords.x + offsetX) + 'px';
-                            overlay.style.top = (canvasCoords.y + offsetY - 10) + 'px';
+                            overlay.style.top = (canvasCoords.y + offsetY - 20) + 'px';
                             pdfViewer.appendChild(overlay);
 
                             const dot = document.createElement('div');
                             dot.className = 'coordinate-dot conditional';
                             dot.style.left = (canvasCoords.x + offsetX) + 'px';
-                            dot.style.top = (canvasCoords.y + offsetY) + 'px';
+                            dot.style.top = (canvasCoords.y + offsetY + 26 - 48) + 'px';
+                            console.log(canvasCoords.y + offsetY + 26 - 48, "style.top")
                             pdfViewer.appendChild(dot);
                         }
                     });
@@ -1321,11 +1340,15 @@
                 if (showDataPreview) {
                     const dataPreview = document.createElement('div');
                     dataPreview.className = 'data-preview image-preview';
+
+                    // Images are positioned from bottom-left in PDF coordinates
+                    const scaledWidth = image.width * pdfCanvas.width / pdfPageDimensions[currentPage].width;
+                    const scaledHeight = image.height * pdfCanvas.height / pdfPageDimensions[currentPage].height;
+
                     dataPreview.style.left = (canvasCoords.x + offsetX) + 'px';
-                    const adjustedCanvasHeight = image.height * pdfCanvas.height / pdfPageDimensions[currentPage].height;
-                    dataPreview.style.top = (canvasCoords.y + offsetY - adjustedCanvasHeight) + 'px';
-                    dataPreview.style.width = (image.width * pdfCanvas.width / pdfPageDimensions[currentPage].width) + 'px';
-                    dataPreview.style.height = adjustedCanvasHeight + 'px';
+                    dataPreview.style.top = (canvasCoords.y + offsetY - scaledHeight) + 'px';
+                    dataPreview.style.width = scaledWidth + 'px';
+                    dataPreview.style.height = scaledHeight + 'px';
                     dataPreview.innerHTML = `<span style="font-size: 10px;">🖼️ ${image.name}</span>`;
                     pdfViewer.appendChild(dataPreview);
 
@@ -1356,7 +1379,7 @@
             currentPageShapes.forEach(shape => {
                 const canvasCoords = pdfToCanvasCoordinates(shape.x, shape.y, currentPage);
 
-                if (showDataPreview && shape.type !== 'line') {
+                if (showDataPreview) {
                     const dataPreview = document.createElement('div');
                     dataPreview.className = 'data-preview shape-preview';
                     dataPreview.style.position = 'absolute';
@@ -1383,9 +1406,54 @@
                         if (shape.fill) {
                             dataPreview.style.backgroundColor = shape.color + '33';
                         }
+                    } else if (shape.type === 'line') {
+                        // Create SVG for line preview
+                        const endCoords = pdfToCanvasCoordinates(shape.end_x, shape.end_y, currentPage);
+                        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                        svg.style.position = 'absolute';
+                        svg.style.pointerEvents = 'none';
+                        svg.style.overflow = 'visible';
+
+                        const minX = Math.min(canvasCoords.x, endCoords.x);
+                        const minY = Math.min(canvasCoords.y, endCoords.y);
+                        const width = Math.abs(endCoords.x - canvasCoords.x);
+                        const height = Math.abs(endCoords.y - canvasCoords.y);
+
+                        svg.style.left = (minX + offsetX) + 'px';
+                        svg.style.top = (minY + offsetY) + 'px';
+                        svg.style.width = width + 'px';
+                        svg.style.height = height + 'px';
+
+                        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        line.setAttribute('x1', canvasCoords.x - minX);
+                        line.setAttribute('y1', canvasCoords.y - minY);
+                        line.setAttribute('x2', endCoords.x - minX);
+                        line.setAttribute('y2', endCoords.y - minY);
+                        line.setAttribute('stroke', shape.color);
+                        line.setAttribute('stroke-width', shape.stroke_width);
+
+                        svg.appendChild(line);
+                        pdfViewer.appendChild(svg);
+
+                        // Add labels for start and end points
+                        const startLabel = document.createElement('div');
+                        startLabel.className = 'data-preview-label';
+                        startLabel.textContent = `Line Start (${shape.x}, ${shape.y})`;
+                        startLabel.style.left = (canvasCoords.x + offsetX) + 'px';
+                        startLabel.style.top = (canvasCoords.y + offsetY) + 'px';
+                        pdfViewer.appendChild(startLabel);
+
+                        const endLabel = document.createElement('div');
+                        endLabel.className = 'data-preview-label';
+                        endLabel.textContent = `Line End (${shape.end_x}, ${shape.end_y})`;
+                        endLabel.style.left = (endCoords.x + offsetX) + 'px';
+                        endLabel.style.top = (endCoords.y + offsetY) + 'px';
+                        pdfViewer.appendChild(endLabel);
                     }
-                    
-                    pdfViewer.appendChild(dataPreview);
+
+                    if (shape.type !== 'line') {
+                        pdfViewer.appendChild(dataPreview);
+                    }
                 }
 
                 if (!showDataPreview || shape.type === 'line') {
@@ -1401,6 +1469,16 @@
                     dot.style.left = (canvasCoords.x + offsetX) + 'px';
                     dot.style.top = (canvasCoords.y + offsetY) + 'px';
                     pdfViewer.appendChild(dot);
+
+                    if (shape.type === 'line') {
+                        // Add end point dot for lines
+                        const endCoords = pdfToCanvasCoordinates(shape.end_x, shape.end_y, currentPage);
+                        const endDot = document.createElement('div');
+                        endDot.className = 'coordinate-dot shape';
+                        endDot.style.left = (endCoords.x + offsetX) + 'px';
+                        endDot.style.top = (endCoords.y + offsetY) + 'px';
+                        pdfViewer.appendChild(endDot);
+                    }
                 }
             });
         }
@@ -1411,7 +1489,7 @@
                 currentPage = newPage;
                 renderPage(currentPage);
                 updatePageInfo();
-                
+
                 if (lineDrawingState) {
                     cancelLineDrawing();
                 }
@@ -1522,10 +1600,10 @@
                 showTemporaryLinePoint(canvasX, canvasY, 'start');
                 updateModeInstructions();
                 showNotification('Line start point set. Click again to set end point.', 'success');
-                
+
             } else if (lineDrawingState === 'waiting_for_end') {
                 const pdfCoords = canvasToPDFCoordinates(canvasX, canvasY, page);
-                
+
                 const shape = {
                     type: 'line',
                     x: tempLineStart.x,
@@ -1551,7 +1629,7 @@
                 removeTemporaryLinePoints();
                 updateModeInstructions();
                 showNotification('Line created successfully!', 'success');
-                
+
             } else {
                 const shapeType = prompt('Select shape type:\n1. Rectangle\n2. Circle\n3. Line (two-point)');
                 let type;
@@ -1595,12 +1673,12 @@
 
         function showTemporaryLinePoint(canvasX, canvasY, pointType) {
             removeTemporaryLinePoints();
-            
+
             const canvasRect = pdfCanvas.getBoundingClientRect();
             const viewerRect = pdfViewer.getBoundingClientRect();
-            const offsetX = canvasRect.left - viewerRect.left;
-            const offsetY = canvasRect.top - viewerRect.top;
-            
+            const offsetX = canvasRect.left - viewerRect.left + pdfViewer.scrollLeft;
+            const offsetY = canvasRect.top - viewerRect.top + pdfViewer.scrollTop;
+
             const tempPoint = document.createElement('div');
             tempPoint.className = 'temp-line-point';
             tempPoint.id = `temp-${pointType}-point`;
@@ -1616,7 +1694,7 @@
             tempPoint.style.zIndex = '1001';
             tempPoint.style.pointerEvents = 'none';
             tempPoint.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
-            
+
             const label = document.createElement('div');
             label.style.position = 'absolute';
             label.style.top = '-25px';
@@ -2237,8 +2315,8 @@
                         g: parseFloat(g.toFixed(3)),
                         b: parseFloat(b.toFixed(3)),
                         shape: shape.type.charAt(0).toUpperCase() + shape.type.slice(1),
-                        'x0-coordinate': parseFloat(x0_inches.toFixed(3)),
-                        'y0-coordinate': parseFloat(y0_inches.toFixed(3))
+                        'x0-coordinate': parseFloat(x0_inches.toFixed(3) - 1),
+                        'y0-coordinate': parseFloat(y0_inches.toFixed(3) - 1)
                     }
                 };
 
@@ -2250,8 +2328,8 @@
                     shapeConfig.draw_shape['x1-coordinate'] = parseFloat((x0_inches + radiusInches).toFixed(3));
                     shapeConfig.draw_shape['y1-coordinate'] = parseFloat((y0_inches + radiusInches).toFixed(3));
                 } else if (shape.type === 'line') {
-                    shapeConfig.draw_shape['x1-coordinate'] = parseFloat((shape.end_x / 72.0).toFixed(3));
-                    shapeConfig.draw_shape['y1-coordinate'] = parseFloat((shape.end_y / 72.0).toFixed(3));
+                    shapeConfig.draw_shape['x1-coordinate'] = parseFloat((shape.end_x / 72.0).toFixed(3) - 1);
+                    shapeConfig.draw_shape['y1-coordinate'] = parseFloat((shape.end_y / 72.0).toFixed(3) - 1);
                 }
 
                 pageGroups[zeroBasedPage].variables.push(shapeConfig);
